@@ -337,7 +337,8 @@ function apply {
 		[Alias('l')]
 		[string]$log,
 		[Alias('dep')]
-		$dependencies
+		$dependencies,
+		[int]$depth = 0
 	)
 	
 		$ErrorActionPreference = 'Stop'
@@ -362,7 +363,7 @@ function apply {
 					if ($single) {
 						$folders += Get-Item -Path $i -ErrorAction SilentlyContinue
 					} else {
-						$folders += Get-ChildItem -Path $i -Directory -ErrorAction SilentlyContinue
+						$folders += Get-ChildItem -Path $i -Directory -Depth $depth -ErrorAction SilentlyContinue
 					}
 				} else {
 					Shout "Folder `'$i`' does not exist" -color Red

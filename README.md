@@ -20,9 +20,12 @@ The script consists of two parts. The first part, **`pull`**, involves extractin
   - Supports custom icon search rules using a hashtable.
   - Includes an option to remove icons from folders and restart Explorer.
 
-## 📚 How to use `pull` and `apply`
+## 💡 How to use `pull` and `apply`
 
 ### 🖱️ With GUI
+
+>[!WARNING]
+> You can use direct link for your calmness - https://raw.githubusercontent.com/JustDj-Git/Iconizer/refs/heads/main/Iconizer.ps1
 
 1.   Open PowerShell (not CMD). Right-click on the Windows start menu and find PowerShell (or Terminal), or press `Win + S` and type Powershell.
 2.   Copy and paste the code below and press enter for invoking **`pull`** function only
@@ -43,6 +46,9 @@ or for both
 irm icon.scripts.wiki | iex; pull; apply
 ```
 
+```powershell
+irm https://raw.githubusercontent.com/JustDj-Git/Iconizer/refs/heads/main/Iconizer.ps1 | iex; pull
+```
 ---
 
 ## 🔧 Parameters and Switches for `pull`
@@ -69,10 +75,10 @@ irm icon.scripts.wiki | iex; pull; apply
 	irm ico.scripts.wiki | iex; pull -d 'C:\location', 'C:\location2' -f 'png' -index '1' -s
 	```
 
-### Notes
-- If **`directory`** is not specified, a system FileDialog will open.
-- If **`format`** is not specified, `ico` will be used as the default format.
-- If **`index`** is not specified, index `0` will be used by default.
+>[!TIP]
+> If **`directory`** is not specified, a system FileDialog will open.
+> If **`format`** is not specified, `ico` will be used as the default format.
+> If **`index`** is not specified, index `0` will be used by default.
 
 ---
 ## 🔧 Parameters and Switches for `apply`
@@ -86,6 +92,7 @@ irm icon.scripts.wiki | iex; pull; apply
 - **`-filter` or `-f`**: Specify the names of folders to ignore in the format `'FIRST_NAME'` or `'FIRST_NAME', 'SECOND_NAME'`, or `@('FIRST_NAME', 'SECOND_NAME')`.
 - **`-single` or `-s`**: When used, this switch applies the icon exclusively to the specified folder, excluding any subfolders.
 - **`-dependencies` or `-dep`**: Use a hashtable to define custom rules for icon searches, e.g., `@{"Inno Setup 5" = "Compil32.exe"; "DaVinci Resolve" = "Resolve.exe"}`.
+- **`-depth`**: The Depth parameter specifies the number of subdirectory levels to include in the recursion (ex. `-depth 2`).
 - **`-remove` or `-rm`**: This switch removes the folder icons and restarts Explorer.
 
 ---
