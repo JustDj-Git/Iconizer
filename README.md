@@ -87,6 +87,7 @@ Extract icons from executable files with various options and formats.
 | `-png`       |        | switch   | Extract largest icon as PNG           |                                  |
 | `-info`      |        | switch   | Show icons info (no extraction)       |                                  |
 | `-all`       | `-a`   | switch   | Extract all icons                     |                                  |
+| `-folder`    |        | switch   | Opens a folder selection dialog       |                                  |
 | `-log`       | `-l`   | string   | Enable logging to specified file path | `-l 'C:\task_log.txt'`           |
 
 >[!TIP]
