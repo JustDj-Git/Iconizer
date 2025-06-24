@@ -1,8 +1,11 @@
-# 🎨  Iconizer - Icon Extraction & Folder Customization Tool 🚀
+# 🎨  Iconizer - Icon Extraction & Folder Skinner 🚀
 
 <p align="center">
   <img src="images/main.png" alt="Iconizer Main Icon"/>
 </p>
+Iconizer is a lightweight PowerShell tool designed to extract icons from .exe files and assigning custom icons files to folders — with zero installation, configuration, or leftover traces.
+
+The core idea is simplicity and portability: just run the script from anywhere and get immediate results. No dependencies, no setup — just clean PowerShell and native Windows functionality.
 
 The script consists of two parts. The first part, **`pull`**, involves extracting icons from executable files (`.exe`) and saving them in different formats. The second part, **`apply`**, customizes folder icons by locating `.exe` or `.ico` files and creating a `desktop.ini` file with the required settings to display an icon on a folder, making both tools useful for developers and users who need efficient icon management solutions.
 
@@ -42,7 +45,8 @@ The script consists of two parts. The first part, **`pull`**, involves extractin
 ## 💡 Quick Start
 
 >[!NOTE]
-> Direct link for security-conscious users: - <https://raw.githubusercontent.com/JustDj-Git/Iconizer/refs/heads/main/Iconizer.ps1>
+> Direct link for security-conscious users:
+<https://raw.githubusercontent.com/JustDj-Git/Iconizer/refs/heads/main/Iconizer.ps1>
 
 1. Open PowerShell (not CMD). Right-click on the Windows start menu and find PowerShell (or Terminal), or press `Win + S` and type Powershell.
 2. Copy and paste the code below and press enter for invoking **`pull`** function only
@@ -75,15 +79,15 @@ Extract icons from executable files with various options and formats.
 
  📝 The script accepts the following parameters and switches:
 
-| Parameter | Alias | Type | Description | Examples |
-|-----------|-------|------|-------------|--------------|
-| `-directory` | `-d` | string[] | Paths to .exe files or several directories | `-d "C:\path\to\", "C:\path\to\test.exe"` |
-| `-index` | `-i` | int | Icon group index to extract | `-i 1` |
-| `-depth` | `-dep` | int | Subdirectory recursion depth | `-dep 2` |
-| `-png` | | switch | Extract largest icon as PNG | |
-| `-info` | | switch | Show icons information without extraction | |
-| `-all` | `-a` | switch | Extract all icons | |
-| `-log` | `-l` | string | Enable logging to specified file path | `-l 'C:\task_log.txt'` |
+| Parameter    | Alias  | Type     | Description                           | Examples                         |
+|--------------|--------|----------|---------------------------------------|----------------------------------|
+| `-directory` | `-d`   | string[] | Paths to .exe or several directories  | `-d "FIRST_PATH", "SECOND_PATH"` |
+| `-index`     | `-i`   | int      | Icon group index to extract           | `-i 1`                           |
+| `-depth`     | `-dep` | int      | Subdirectory recursion depth          | `-dep 2`                         |
+| `-png`       |        | switch   | Extract largest icon as PNG           |                                  |
+| `-info`      |        | switch   | Show icons info (no extraction)       |                                  |
+| `-all`       | `-a`   | switch   | Extract all icons                     |                                  |
+| `-log`       | `-l`   | string   | Enable logging to specified file path | `-l 'C:\task_log.txt'`           |
 
 >[!TIP]
 > If **`directory`** is not specified, a system FileDialog will open.
@@ -122,18 +126,18 @@ irm icon.scripts.wiki | iex; pull -d 'C:\app.exe' -info
 
 📝 The script accepts the following parameters and switches:
 
-| Parameter | Alias | Type | Description | Examples |
-|------------------|--------------------|------------------|---------------------|-----------------|
-| `-directory` | `-d` | string[] | Folder paths to process | -d `'FIRST_PATH', 'SECOND_PATH'` |
-| `-priority` | `-p` | string | Icon selection priority (`ico`, `exe`) | -p `'exe'` |
-| `-filter` | `-f` | string[] | Folder names to exclude | -f `'FIRST_NAME', 'SECOND_NAME'` |
-| `-single` | `-s` | switch | Apply to specified folder only (no recursion) |  |
-| `-remove` | `-rm` | switch | Remove folder icons and restart Explorer |  |
-| `-dependencies` | `-dep` | hashtable | Custom icon search rules | `@{"name1" = "1.exe"; "name2" = "2.exe"}` |
-| `-NoForce` | | switch | Skip folders with existing desktop.ini |  |
-| `-search_depth` | `-sd` | int | Icon file search depth | `-sd 2` |
-| `-apply_depth` | `-ad` | int | Folder processing depth | `-ad 2` |
-| `-log` | `-l` | string | Enable logging to specified file path | `-l 'C:\task_log.txt'` |
+| Parameter       | Alias  | Type      | Description                            | Examples                                  |
+|-----------------|--------|-----------|----------------------------------------|-------------------------------------------|
+| `-directory`    | `-d`   | string[]  | Folder paths to process                | -d `'FIRST_PATH', 'SECOND_PATH'`          |
+| `-priority`     | `-p`   | string    | Icon selection priority (`ico`, `exe`) | -p `'exe'`                                |
+| `-filter`       | `-f`   | string[]  | Folder names to exclude                | -f `'FIRST_NAME', 'SECOND_NAME'`          |
+| `-single`       | `-s`   | switch    | Non-recursive folder apply             |                                           |
+| `-rules`        | `-r`   | hashtable | Custom icon applying rules             | `@{"X" = "N.exe"; "Y" = "Z.exe"}` |
+| `-NoForce`      | `-nf`  | switch    | Skip folders with existing desktop.ini |                                           |
+| `-search_depth` | `-sd`  | int       | Icon file search depth                 | `-sd 2`                                   |
+| `-apply_depth`  | `-ad`  | int       | Folder processing depth                | `-ad 2`                                   |
+| `-remove`       | `-rm`  | switch    | Remove folder icons                    |                                           |
+| `-log`          | `-l`   | string    | Enable logging to specified file path  | `-l 'C:\log.txt'`                    |
 
 >[!TIP]
 > If **`directory`** is not specified, a system FileDialog will open.
@@ -166,13 +170,13 @@ irm icon.scripts.wiki | iex; apply -d 'D:\Programs' -f 'Backup', 'Temp'
 #### Custom Dependencies
 
 ```powershell
-# Define custom icon search rules
+# Define custom icon applying rules
 $deps = @{
     "Visual Studio Code" = "Code.exe"
     "Adobe Photoshop" = "Photoshop.exe"
     "Steam" = "steam.exe"
 }
-irm icon.scripts.wiki | iex; apply -d 'D:\Programs' -dep $deps
+irm icon.scripts.wiki | iex; apply -d 'D:\Programs' -r $deps
 ```
 
 #### Icon Removal
@@ -201,7 +205,7 @@ apply -d 'C:\' -filter 'Windows', 'System32', 'Program Files'
 pull -d 'problematic.exe' -info
 
 # Try different icon groups
-pull -d 'app.exe' -index 2 -all
+pull -d 'app.exe' -index 2
 
 # Try to extract all icons
 pull -d 'app.exe' -all
