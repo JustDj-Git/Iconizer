@@ -1,524 +1,948 @@
 function Shout {
-	param(
-		[parameter(Mandatory = $true)]
-		[string]$text,
-		[string]$color,
-		[switch]$new,
-		[switch]$after,
-		[switch]$date
-	)
+    param(
+        [parameter(Mandatory = $true)]
+        [string]$text,
+        [string]$color,
+        [switch]$new,
+        [switch]$after,
+        [switch]$date
+    )
 
-	if (($date) -or ($log)){
-		$_date = (Get-Date -Format "MM/dd/yy HH:mm:ss").ToString()
-		$finaltext = "{0} {1}" -f $_date, $text
-	} else { 
-		$finaltext = $text 
-	}
+    if (($date) -or ($log)){
+        $_date = (Get-Date -Format "MM/dd/yy HH:mm:ss").ToString()
+        $finaltext = "{0} {1}" -f $_date, $text
+    } else { 
+        $finaltext = $text 
+    }
 
-	if ($new){ $finaltext = "`n" + $finaltext }
-	if ($after){ $finaltext = $finaltext + "`n" }
-	if ($log) { $finaltext | Out-File -FilePath $log -Append -ErrorAction SilentlyContinue }
+    if ($new){ $finaltext = "`n" + $finaltext }
+    if ($after){ $finaltext = $finaltext + "`n" }
+    if ($log) { $finaltext | Out-File -FilePath $log -Append -ErrorAction SilentlyContinue }
 
-	if ($color){
-		if (-not ([Enum]::IsDefined([System.ConsoleColor], $color))) {
-			Write-Host "$color doesn't exists in System.ConsoleColor" -ForegroundColor Red
-			Write-Host $finaltext
-		} else {
-			Write-Host $finaltext -ForegroundColor $color
-		}
-	} else {
-		Write-Host $finaltext
-	}
+    if ($color){
+        if (-not ([Enum]::IsDefined([System.ConsoleColor], $color))) {
+            Write-Host "$color doesn't exists in System.ConsoleColor" -ForegroundColor Red
+            Write-Host $finaltext
+        } else {
+            Write-Host $finaltext -ForegroundColor $color
+        }
+    } else {
+        Write-Host $finaltext
+    }
 }
 
 function Timer {
-	param(
-		[switch]$start,
-		[switch]$end
-	)
-	if ($start){
-		$global:timer = [Diagnostics.Stopwatch]::StartNew()
-	}
-	if ($end){
-		$global:timer.Stop()
-		$timeRound = [Math]::Round(($global:timer.Elapsed.TotalSeconds), 2)
-		$global:timer.Reset()
-		Shout "Task completed in $timeRound`s" -color Cyan -new
-	}
+    param(
+        [switch]$start,
+        [switch]$end
+    )
+    if ($start){
+        $global:timer = [Diagnostics.Stopwatch]::StartNew()
+    }
+    if ($end){
+        $global:timer.Stop()
+        $timeRound = [Math]::Round(($global:timer.Elapsed.TotalSeconds), 2)
+        $global:timer.Reset()
+        Shout "Task completed in $timeRound`s" -color Cyan -new
+    }
 }
 
 function SelectPath {
-	param(
-		[switch]$files
-	)
+    param(
+        [switch]$files
+    )
 
-	Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Windows.Forms
 
-	$Topmost = New-Object System.Windows.Forms.Form
-	$Topmost.TopMost = $True
-	$Topmost.MinimizeBox = $True
+    $Topmost = New-Object System.Windows.Forms.Form
+    $Topmost.TopMost = $True
+    $Topmost.MinimizeBox = $True
 
-	if ($files){
-		$OpenFileDialog = New-Object -TypeName System.Windows.Forms.OpenFileDialog
-		$OpenFileDialog.RestoreDirectory = $True
-		$OpenFileDialog.Title = 'Select an EXE File'
-		$OpenFileDialog.Filter = 'Executable files (*.exe)|*.exe'
-		if (($OpenFileDialog.ShowDialog() -eq 'OK')) {
-			$file = $OpenFileDialog.FileName
-		}
-	} else {
-		$OpenFolderDialog = New-Object -TypeName System.Windows.Forms.FolderBrowserDialog
-		$OpenFolderDialog.Description = 'Select a folder'
-		$OpenFolderDialog.Rootfolder = 'MyComputer'
-		$OpenFolderDialog.ShowNewFolderButton = $false
-		if ($OpenFolderDialog.ShowDialog($tempForm) -eq 'OK') {
-			$directory = $OpenFolderDialog.SelectedPath
-		}
-	}
+    if ($files){
+        $OpenFileDialog = New-Object -TypeName System.Windows.Forms.OpenFileDialog
+        $OpenFileDialog.RestoreDirectory = $True
+        $OpenFileDialog.Title = 'Select an EXE File'
+        $OpenFileDialog.Filter = 'Executable files (*.exe)|*.exe'
+        if (($OpenFileDialog.ShowDialog() -eq 'OK')) {
+            $file = $OpenFileDialog.FileName
+        }
+    } else {
+        $OpenFolderDialog = New-Object -TypeName System.Windows.Forms.FolderBrowserDialog
+        $OpenFolderDialog.Description = 'Select a folder'
+        $OpenFolderDialog.Rootfolder = 'MyComputer'
+        $OpenFolderDialog.ShowNewFolderButton = $false
+        if ($OpenFolderDialog.ShowDialog($tempForm) -eq 'OK') {
+            $directory = $OpenFolderDialog.SelectedPath
+        }
+    }
 
-	$Topmost.Close()
-	$Topmost.Dispose()
+    $Topmost.Close()
+    $Topmost.Dispose()
 
-	if ($file){
-		return $file
-	} elseif ($directory){
-		return $directory
-	} else {
-		return $null
-	}
+    if ($file){
+        return $file
+    } elseif ($directory){
+        return $directory
+    } else {
+        return $null
+    }
+}
+
+function Import-Type {
+    try {
+        Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+
+public class IconExtractor
+{
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern IntPtr LoadLibraryEx(string lpFileName, IntPtr hReservedNull, uint dwFlags);
+    
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool FreeLibrary(IntPtr hModule);
+    
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern IntPtr FindResource(IntPtr hModule, IntPtr lpName, IntPtr lpType);
+    
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern IntPtr FindResourceW(IntPtr hModule, string lpName, IntPtr lpType);
+    
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern IntPtr LoadResource(IntPtr hModule, IntPtr hResInfo);
+    
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern IntPtr LockResource(IntPtr hResData);
+    
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern uint SizeofResource(IntPtr hModule, IntPtr hResInfo);
+    
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool EnumResourceNames(IntPtr hModule, IntPtr lpszType, EnumResNameProc lpEnumFunc, IntPtr lParam);
+    
+    public delegate bool EnumResNameProc(IntPtr hModule, IntPtr lpszType, IntPtr lpszName, IntPtr lParam);
+    
+    public const uint LOAD_LIBRARY_AS_DATAFILE = 0x00000002;
+    public const int RT_GROUP_ICON = 14;
+    public const int RT_ICON = 3;
+    
+    [DllImport("shell32.dll", SetLastError = true)]
+    public static extern IntPtr ExtractIcon(IntPtr hInst, string lpszExeFileName, uint nIconIndex);
+    
+    [DllImport("shell32.dll", SetLastError = true)]
+    public static extern uint ExtractIconEx(string lpszFile, int nIconIndex, IntPtr[] phiconLarge, IntPtr[] phiconSmall, uint nIcons);
+    
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool DestroyIcon(IntPtr hIcon);
+    
+    // Helper method to check if a pointer represents an integer resource
+    public static bool IS_INTRESOURCE(IntPtr ptr)
+    {
+        return ((ulong)ptr) >> 16 == 0;
+    }
+    
+    // Method to get the main icon index (simplified approach)
+    public static int GetMainIconIndex(string filePath)
+    {
+        try
+        {
+            // Get total icon count
+            uint iconCount = ExtractIconEx(filePath, -1, null, null, 0);
+            return iconCount > 0 ? 0 : -1; // Return 0 for first icon, -1 if no icons
+        }
+        catch
+        {
+            return -1;
+        }
+    }
+}
+"@
+
+# Add .NET assemblies for image processing
+Add-Type -AssemblyName System.Drawing
+
+    } catch [System.Exception] {
+        Write-Host "An unexpected error occurred in Import-Type: $($_.Exception.Message)" -ForegroundColor Red
+        return
+    }
+}
+
+function Get-IconsByGroup {
+    param(
+        [string]$FilePath,
+        [int]$index = 1,
+        [string]$OutputDir = ".",
+        [switch]$all,
+        [switch]$info,
+        [switch]$png
+    )
+    
+    if (-not (Test-Path $FilePath)) {
+        Shout "File not found: $FilePath" -color Red
+        return
+    }
+    
+    if (-not $info -and -not (Test-Path $OutputDir)) {
+        New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
+    }
+    
+    if ($info) {
+        $all = $true
+    }
+
+    $ICO_name = [System.IO.Path]::GetFileNameWithoutExtension($FilePath)
+
+    $hModule = [IconExtractor]::LoadLibraryEx($FilePath, [IntPtr]::Zero, [IconExtractor]::LOAD_LIBRARY_AS_DATAFILE)
+    
+    if ($hModule -eq [IntPtr]::Zero) {
+        Shout "Failed to load file!" -color Red
+        return
+    }
+    
+    try {
+        $script:currentGroup = 0
+        $script:targetGroup = $index
+        $script:extractAll = $all
+        $script:totalExtracted = 0
+        $script:processedGroups = @()
+        $script:resourcesNames = @()
+        $script:largestIcon = $null
+        $script:largestIconSize = 0
+        
+        $message = if ($script:extractAll) {
+            'Analyzing all icon groups'
+        } else {
+            "Analyzing group #$index"
+        }
+
+        Shout "$message..." -color Yellow
+        
+        $callback = {
+            param($hMod, $lpType, $lpName, $lParam)
+            
+            $script:currentGroup++
+            
+            if (-not $script:extractAll -and $script:currentGroup -ne $script:targetGroup) {
+                return $true
+            }
+            
+            # Determine resource name/ID
+            if ([IconExtractor]::IS_INTRESOURCE($lpName)) {
+                $resourceId = [int]$lpName
+                $resourceName = "ID_$resourceId"
+            } else {
+                try {
+                    $stringName = [System.Runtime.InteropServices.Marshal]::PtrToStringUni($lpName)
+                    $resourceName = if ([string]::IsNullOrWhiteSpace($stringName)) { "UNNAMED" } else { $stringName }
+                } catch {
+                    $resourceName = "ERROR_READING_NAME"
+                }
+            }
+            
+            Shout "Extracting group #$script:currentGroup ($resourceName)..." -color Green -new
+            
+            # Load and analyze icon group resource
+            $hResInfo = [IntPtr]::Zero
+            
+            if ([IconExtractor]::IS_INTRESOURCE($lpName)) {
+                $hResInfo = [IconExtractor]::FindResource($hMod, $lpName, [IntPtr][IconExtractor]::RT_GROUP_ICON)
+            } else {
+                try {
+                    $stringName = [System.Runtime.InteropServices.Marshal]::PtrToStringUni($lpName)
+                    if (-not [string]::IsNullOrEmpty($stringName)) {
+                        $hResInfo = [IconExtractor]::FindResourceW($hMod, $stringName, [IntPtr][IconExtractor]::RT_GROUP_ICON)
+                    }
+                } catch {
+                    Shout "Error processing string name" -color Red
+                }
+            }
+            
+            $groupExtracted = $false
+            
+            if ($hResInfo -ne [IntPtr]::Zero) {
+                $hResData = [IconExtractor]::LoadResource($hMod, $hResInfo)
+                if ($hResData -ne [IntPtr]::Zero) {
+                    $pData = [IconExtractor]::LockResource($hResData)
+                    $size = [IconExtractor]::SizeofResource($hMod, $hResInfo)
+                    
+                    if ($pData -ne [IntPtr]::Zero -and $size -gt 6) {
+                        # Read group resource data
+                        $iconDir = New-Object byte[] $size
+                        [System.Runtime.InteropServices.Marshal]::Copy($pData, $iconDir, 0, $size)
+                        
+                        # Parse group icon header
+                        $iconCount = [BitConverter]::ToUInt16($iconDir, 4)
+                        
+                        Shout "Icons found in group: $iconCount" -color Cyan
+                        
+                        # Create ICO file
+                        if ($all){
+                            $icoPath = Join-Path $OutputDir "${ICO_name}_Group_${script:currentGroup}_${resourceName}.ico"
+                        } else {
+                            $icoPath = Join-Path $OutputDir "$ICO_name.ico"
+                        }
+                        
+                        $icoData = @()
+                        
+                        # ICO file header
+                        $icoData += @(0, 0)  # Reserved
+                        $icoData += @(1, 0)  # Type (1 = ICO)
+                        $icoData += [BitConverter]::GetBytes([uint16]$iconCount)  # Count
+                        
+                        $iconDataArray = @()
+                        $currentOffset = 6 + ($iconCount * 16)  # Header + directory
+                        
+                        # Process each icon in group
+                        for ($i = 0; $i -lt $iconCount; $i++) {
+                            $offset = 6 + ($i * 14)
+                            if ($offset + 13 -lt $iconDir.Length) {
+                                $width = $iconDir[$offset]
+                                $height = $iconDir[$offset + 1]
+                                $colorCount = $iconDir[$offset + 2]
+                                $reserved2 = $iconDir[$offset + 3]
+                                $planes = [BitConverter]::ToUInt16($iconDir, $offset + 4)
+                                $bitCount = [BitConverter]::ToUInt16($iconDir, $offset + 6)
+                                #$bytesInRes = [BitConverter]::ToUInt32($iconDir, $offset + 8)
+                                $iconId = [BitConverter]::ToUInt16($iconDir, $offset + 12)
+                                
+                                # Load individual icon data
+                                $hIconRes = [IconExtractor]::FindResource($hMod, [IntPtr]$iconId, [IntPtr][IconExtractor]::RT_ICON)
+                                if ($hIconRes -ne [IntPtr]::Zero) {
+                                    $hIconData = [IconExtractor]::LoadResource($hMod, $hIconRes)
+                                    if ($hIconData -ne [IntPtr]::Zero) {
+                                        $pIconData = [IconExtractor]::LockResource($hIconData)
+                                        $iconSize = [IconExtractor]::SizeofResource($hMod, $hIconRes)
+                                        
+                                        if ($pIconData -ne [IntPtr]::Zero -and $iconSize -gt 0) {
+                                            $iconBytes = New-Object byte[] $iconSize
+                                            [System.Runtime.InteropServices.Marshal]::Copy($pIconData, $iconBytes, 0, $iconSize)
+                                            
+                                            # Check if this is the largest icon for PNG extraction
+                                            if ($png) {
+                                                $actualWidth = if ($width -eq 0) { 256 } else { $width }
+                                                $actualHeight = if ($height -eq 0) { 256 } else { $height }
+                                                $iconPixelSize = $actualWidth * $actualHeight
+                                                
+                                                if ($iconPixelSize -gt $script:largestIconSize) {
+                                                    $script:largestIconSize = $iconPixelSize
+                                                    $script:largestIcon = @{
+                                                        Width = $actualWidth
+                                                        Height = $actualHeight
+                                                        Data = $iconBytes
+                                                        Group = $script:currentGroup
+                                                        ResourceName = $resourceName
+                                                    }
+                                                }
+                                            }
+                                            
+                                            # Add icon directory to ICO file
+                                            $icoData += @($width, $height, $colorCount, $reserved2)
+                                            $icoData += [BitConverter]::GetBytes($planes)
+                                            $icoData += [BitConverter]::GetBytes($bitCount)
+                                            $icoData += [BitConverter]::GetBytes([uint32]$iconSize)
+                                            $icoData += [BitConverter]::GetBytes([uint32]$currentOffset)
+                                            
+                                            $iconDataArray += ,$iconBytes
+                                            $currentOffset += $iconSize
+                                            if ($bitCount -eq 0) { $bitCount = 32 }
+                                            if ($width -eq 0) { $width = 256 }
+                                            if ($height -eq 0) { $height = 256 }
+                                            Shout "  Icon $($i+1): ${width}x${height}, $bitCount bit, $iconSize bytes" -color Gray
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        # Write ICO file
+                        if ($iconDataArray.Count -gt 0) {
+                            if (!($info) -and !($png)){
+                                $allData = @()
+                                $allData += $icoData
+                                foreach ($iconBytes in $iconDataArray) {
+                                    $allData += $iconBytes
+                                }
+                                [System.IO.File]::WriteAllBytes($icoPath, $allData)
+                                Shout "Saved: $icoPath" -color Green
+                            }
+                            $script:totalExtracted++
+                            $script:processedGroups += $currentGroup
+                            $script:resourcesNames += $resourceName
+                            $script:groupExtracted = $true
+                        }
+                    }
+                }
+            }
+            
+            if (-not $script:groupExtracted) {
+                Shout "Failed to extract group #$currentGroup" -color Red
+            }
+
+            return $script:extractAll
+        }
+        
+        $callbackDelegate = [IconExtractor+EnumResNameProc]$callback
+        [IconExtractor]::EnumResourceNames($hModule, [IntPtr][IconExtractor]::RT_GROUP_ICON, $callbackDelegate, [IntPtr]::Zero) | Out-Null
+        
+        # Extract largest icon as PNG if requested
+        if ($png -and ($null -ne $script:largestIcon)) {
+            try {
+                Shout "Extracting largest icon as PNG..." -color Yellow -new
+                Shout "Largest icon: $($script:largestIcon.Width)x$($script:largestIcon.Height) from Group $($script:largestIcon.Group)" -color Cyan
+                
+                $pngPath = Join-Path $OutputDir "${ICO_name}.png"
+                $conversionSuccess = $false
+                
+                # Method 1: Try direct PNG extraction if the icon data is already PNG
+                if ($script:largestIcon.Data.Length -gt 8) {
+                    $pngSignature = [byte[]](0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+                    $isPng = $true
+                    for ($i = 0; $i -lt 8; $i++) {
+                        if ($script:largestIcon.Data[$i] -ne $pngSignature[$i]) {
+                            $isPng = $false
+                            break
+                        }
+                    }
+                    
+                    if ($isPng) {
+                        Shout "Icon data is already PNG format, saving directly..." -color Cyan
+                        [System.IO.File]::WriteAllBytes($pngPath, $script:largestIcon.Data)
+                        $conversionSuccess = $true
+                    }
+                }
+                
+                # Method 2: Try .NET conversion if not PNG
+                if (-not $conversionSuccess) {
+                    try {
+                        # Create properly formatted ICO file
+                        $tempIcoData = @()
+                        $tempIcoData += @(0, 0, 1, 0, 1, 0)  # ICO header for single icon
+                        
+                        # Icon directory entry (16 bytes)
+                        $width = if ($script:largestIcon.Width -eq 256) { 0 } else { $script:largestIcon.Width }
+                        $height = if ($script:largestIcon.Height -eq 256) { 0 } else { $script:largestIcon.Height }
+                        $tempIcoData += @($width, $height, 0, 0)  # width, height, colors, reserved
+                        $tempIcoData += @(1, 0, 32, 0)  # planes, bitcount
+                        $tempIcoData += [BitConverter]::GetBytes([uint32]$script:largestIcon.Data.Length)  # size
+                        $tempIcoData += [BitConverter]::GetBytes([uint32]22)  # offset
+                        
+                        # Add icon data
+                        $tempIcoData += $script:largestIcon.Data
+                        
+                        # Save temporary ICO file
+                        $tempIcoPath = Join-Path $env:TEMP "temp_largest_icon.ico"
+                        [System.IO.File]::WriteAllBytes($tempIcoPath, $tempIcoData)
+                        
+                        Shout "Attempting .NET conversion..." -color Cyan
+                        
+                        # Try multiple .NET approaches
+                        try {
+                            # Approach 1: Direct Icon loading
+                            Shout "Using direct Icon loading..." -color Cyan
+                            $icon = [System.Drawing.Icon]::new($tempIcoPath)
+                            $bitmap = $icon.ToBitmap()
+                            $bitmap.Save($pngPath, [System.Drawing.Imaging.ImageFormat]::Png)
+                            $bitmap.Dispose()
+                            $icon.Dispose()
+                            $conversionSuccess = $true
+                        } catch {
+                            Shout "Direct Icon loading failed: $($_.Exception.Message)" -color Yellow
+                            
+                            # Approach 2: Try extracting from file stream
+                            try {
+                                Shout "Using FileStream approach..." -color Cyan
+                                $fileStream = [System.IO.FileStream]::new($tempIcoPath, [System.IO.FileMode]::Open)
+                                $icon = [System.Drawing.Icon]::new($fileStream)
+                                $bitmap = $icon.ToBitmap()
+                                $bitmap.Save($pngPath, [System.Drawing.Imaging.ImageFormat]::Png)
+                                $bitmap.Dispose()
+                                $icon.Dispose()
+                                $fileStream.Close()
+                                $conversionSuccess = $true
+                            } catch {
+                                Shout "FileStream approach failed: $($_.Exception.Message)" -color Yellow
+                            }
+                        }
+                        
+                        # Cleanup temp file
+                        Remove-Item $tempIcoPath -Force -ErrorAction SilentlyContinue
+                        
+                    } catch {
+                        Shout ".NET conversion failed: $($_.Exception.Message)" -color Yellow
+                    }
+                }
+                
+                # Method 3: Save raw icon data as fallback
+                if (-not $conversionSuccess) {
+                    Shout "Saving raw icon data as fallback..." -color Yellow
+                    $rawPath = Join-Path $OutputDir "${ICO_name}_raw.bin"
+                    [System.IO.File]::WriteAllBytes($rawPath, $script:largestIcon.Data)
+                    Shout "Raw icon data saved: $rawPath" -color Yellow
+                    Shout "You can try converting this file manually with image editing software" -color Yellow
+                }
+                
+                if ($conversionSuccess) {
+                    Shout "Largest icon saved as PNG: $pngPath" -color Green
+                } else {
+                    Shout "PNG conversion failed, but raw data was saved for manual conversion" -color Yellow
+                }
+                
+            } catch {
+                Shout "Error during PNG extraction: $($_.Exception.Message)" -color Red
+            }
+        }
+        
+        if ($script:totalExtracted -eq 0) {
+            if ($script:extractAll) {
+                Shout "No icon groups found or failed to extract any groups" -color Red
+            } else {
+                Shout "Group #$index not found or failed to extract" -color Red
+            }
+        } else {
+            Shout "Extraction completed successfully!" -color Green -new
+            Shout "Total groups extracted: $script:totalExtracted" -color Green
+            Shout "Processed groups: $($script:resourcesNames -join ', ')" -color Cyan -after
+        }
+    }
+    finally {
+        [IconExtractor]::FreeLibrary($hModule) | Out-Null
+    }
+}
+
+function Find-Candidates {
+    param (
+        [parameter(Mandatory = $true)]
+        [string]$path,
+        [parameter(Mandatory = $true)]
+        [int]$search_depth,
+        [ValidateSet('ico', 'exe')]
+        #[parameter(Mandatory = $true)]
+        $priority
+    )
+    
+    $folder = Get-Item -LiteralPath $path
+    
+    [string]$full_path_folder = $folder.FullName
+    
+    $iconsFilesList = Get-ChildItem -LiteralPath "$full_path_folder" -Recurse -Filter "*.ico" -Depth $search_depth -File
+    $exesFilesList = Get-ChildItem -LiteralPath "$full_path_folder" -Recurse -Filter "*.exe" -Depth $search_depth -File
+    $allFiles = @($exesFilesList) + @($iconsFilesList)
+    
+    [string]$name_folder = ($folder.Name).ToLower()
+    $name_folder = $name_folder -replace $pattern_regex, '' -replace "$pattern_regex_digits", '' -replace "$pattern_regex_symbols", ''
+    
+    if ($allFiles) {
+        if ($log) {
+            Shout "Found: $allFiles" -color DarkGray
+        }
+
+        $candidates = @()
+        
+        $folderWords = $name_folder.Trim().Split(' ')
+        $fullFolderName = $name_folder -replace '\s+', ''
+        
+        foreach ($file in $allFiles) {
+            $FileName = ($file.BaseName).ToLower() -replace $pattern_regex_symbols, '' -replace $pattern_regex, '' -replace $pattern_regex_digits, ''
+            $score = 0
+            
+            if ($FileName -eq $fullFolderName) {
+                $score = 1000
+            } elseif ($FileName.Contains($fullFolderName) -or $fullFolderName.Contains($FileName)) {
+                $score = 500 + ($FileName.Length - [Math]::Abs($FileName.Length - $fullFolderName.Length))
+            } else {
+                foreach ($word in $folderWords) {
+                    if ($word.Length -gt 2) {
+                        if ($FileName -eq $word) {
+                            $score += 200
+                        } elseif ($FileName.Contains($word)) {
+                            $score += 100
+                        } elseif ($word.Contains($FileName) -and $FileName.Length -gt 3) {
+                            $score += 50
+                        }
+                    }
+                }
+                
+                if ($score -gt 0) {
+                    $lengthDiff = [Math]::Abs($FileName.Length - $fullFolderName.Length)
+                    $score += [Math]::Max(0, 20 - $lengthDiff)
+                }
+            }
+            
+            if ($priority -and $file.Extension.ToLower() -eq ".$priority") {
+                $score += 400
+                Shout "Priority bonus applied to: `'$($file.Name)`'" -color Cyan
+            }
+            
+            if ($score -gt 0) {
+                #bonus for short names
+                $score += [Math]::Max(0, 50 - $FileName.Length)
+                $candidates += [PSCustomObject]@{
+                    File  = $file
+                    Score = $score
+                    Name  = $FileName
+                }
+                if ($log){
+                    Shout "Candidate: $($file.Name) | Score: $score" -color DarkGray
+                }
+            }
+        }
+        
+        if ($candidates.Count -gt 0) {
+            $bestCandidate = $candidates | Sort-Object Score -Descending | Select-Object -First 1
+            $Files = $bestCandidate.File
+            if ($log) {
+                Shout "Best candidate: $($Files.Name) with score $($bestCandidate.Score)" -color DarkGray
+            }
+        } else {
+            $Files = $allFiles | Select-Object -First 1
+            Shout "No matches found, using first exe: `'$($Files.Name)`'" -color Yellow
+        }
+    } else {
+        Shout ".$priority candidates not found" -color Red
+    }
+    return $Files
+}
+
+function Test-ForbiddenFolder {
+    param (
+        [string]$Path,
+        [string[]]$ForbiddenFolders
+    )
+    
+    $pathParts = $Path -split '\\' | Where-Object { $_ -ne '' }
+    
+    foreach ($forbiddenFolder in $ForbiddenFolders) {
+        if ($pathParts -contains $forbiddenFolder) {
+            return $true
+        }
+    }
+    return $false
 }
 
 function pull {
-	[CmdletBinding()]
-	param (
-		[Alias('d')]
-		[string[]]$directory,
-		[Alias('f')]
-		[ValidateSet('ico', 'bmp', 'png', 'jpg')]
-		$format = 'ico',
-		[Alias('i')]
-		[int]$index = 0,
-		[Alias('dep')]
-		[int]$depth = 0,
-		[Alias('s')]
-		[switch]$small,
-		[Alias('l')]
-		[string]$log
-	)
+    [CmdletBinding()]
+    param (
+        [Alias('d')]
+        [string[]]$directory,
+        [Alias('i')]
+        [int]$index = 1,
+        [Alias('dep')]
+        [int]$depth = 0,
+        [switch]$png,
+        [switch]$info,
+        [Alias('a')]
+        [switch]$all,
+        [Alias('l')]
+        [string]$log
+    )
 
-	$TypeDefinition = @'
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
-using System.Collections.Generic;
-using System.Drawing.Drawing2D;
+Timer -start
 
-public static class ImagingHelper
-{
-    public static bool ConvertToIcon(Bitmap inputBitmap, Stream output, int[] sizes)
-    {
-        if (inputBitmap == null || sizes == null || sizes.Length == 0)
-            return false;
+####
+Import-Type
+####
 
-        List<MemoryStream> imageStreams = new List<MemoryStream>();
-        foreach (int size in sizes)
-        {
-            Bitmap newBitmap = ResizeImage(inputBitmap, size, size);
-            if (newBitmap == null)
-                return false;
-            MemoryStream memoryStream = new MemoryStream();
-            newBitmap.Save(memoryStream, ImageFormat.Png);
-            imageStreams.Add(memoryStream);
-        }
-
-        BinaryWriter iconWriter = new BinaryWriter(output);
-        if (output == null || iconWriter == null)
-            return false;
-
-        int offset = 0;
-
-        iconWriter.Write((byte)0);
-        iconWriter.Write((byte)0);
-
-        iconWriter.Write((short)1);
-
-        iconWriter.Write((short)sizes.Length);
-
-        offset += 6 + (16 * sizes.Length);
-
-        for (int i = 0; i < sizes.Length; i++)
-        {
-            iconWriter.Write((byte)sizes[i]);
-            iconWriter.Write((byte)sizes[i]);
-            iconWriter.Write((byte)0);
-            iconWriter.Write((byte)0);
-            iconWriter.Write((short)0);
-            iconWriter.Write((short)32);
-            iconWriter.Write((int)imageStreams[i].Length);
-            iconWriter.Write((int)offset);
-            offset += (int)imageStreams[i].Length;
-        }
-
-        for (int i = 0; i < sizes.Length; i++)
-        {
-            iconWriter.Write(imageStreams[i].ToArray());
-            imageStreams[i].Close();
-        }
-
-        iconWriter.Flush();
-
-        return true;
-    }
-
-    public static bool ConvertToIcon(Stream input, Stream output, int[] sizes)
-    {
-        Bitmap inputBitmap = (Bitmap)Bitmap.FromStream(input);
-        return ConvertToIcon(inputBitmap, output, sizes);
-    }
-
-    public static bool ConvertToIcon(string inputPath, string outputPath, int[] sizes)
-    {
-        using (FileStream inputStream = new FileStream(inputPath, FileMode.Open))
-        using (FileStream outputStream = new FileStream(outputPath, FileMode.OpenOrCreate))
-        {
-            return ConvertToIcon(inputStream, outputStream, sizes);
-        }
-    }
-
-    public static bool ConvertToIcon(Image inputImage, string outputPath, int[] sizes)
-    {
-        using (FileStream outputStream = new FileStream(outputPath, FileMode.OpenOrCreate))
-        {
-            return ConvertToIcon(new Bitmap(inputImage), outputStream, sizes);
-        }
-    }
-
-    public static Bitmap ResizeImage(Image image, int width, int height)
-    {
-        var destRect = new Rectangle(0, 0, width, height);
-        var destImage = new Bitmap(width, height);
-
-        destImage.SetResolution(image.HorizontalResolution, image.VerticalResolution);
-
-        using (var graphics = Graphics.FromImage(destImage))
-        {
-            graphics.CompositingMode = CompositingMode.SourceCopy;
-            graphics.CompositingQuality = CompositingQuality.HighQuality;
-            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            graphics.SmoothingMode = SmoothingMode.HighQuality;
-            graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-
-            using (var wrapMode = new ImageAttributes())
-            {
-                wrapMode.SetWrapMode(WrapMode.TileFlipXY);
-                graphics.DrawImage(image, destRect, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, wrapMode);
+        try {
+            if (!($directory)) {
+                $directory = SelectPath -files
+                if ($directory){
+                    $file_GUI = $true
+                }
             }
+
+            Shout "Let's start extracting icons from exes" -color Green -new
+            Shout "-----------------"
+            
+
+            foreach ($i in $directory) {
+                if (Test-Path $i){
+                    if ($file_GUI){
+                        $resolved_path = Get-ChildItem -Path $i -Filter '*.exe' 
+                    } else {
+                        $resolved_path = Get-ChildItem -Path $i -Filter '*.exe' -Recurse -Depth $depth
+                    }
+
+                    foreach ($_path in $resolved_path){
+                        if ($_path) {
+                            Shout "Extracting icons from:`n $($_path.FullName)" -color Yellow -new
+                            $params = @{
+                                FilePath  = $_path.FullName
+                                OutputDir = $_path.DirectoryName
+                                index     = $index
+                            }
+
+                            if ($all) { $params.all   = $true }
+                            if ($info) { $params.info  = $true }
+                            if ($png) { $params.png   = $true }
+                            Get-IconsByGroup @params
+                        } else {
+                            Shout "No exe files in path:`n $($_path.FullName)" -color Red
+                        }
+                    } #foreach
+                } else {
+                    Shout "Path is not exist:`n $($_path.FullName)" -color Red
+                }
+            } #foreach
+        } catch {
+            Shout "Error:$_" -color Red -new
+            Shout "$($_.ScriptStackTrace)" -color Red -new -after
         }
-
-        return destImage;
-    }
-}
-'@
-		try {
-			Add-Type -TypeDefinition $TypeDefinition -ReferencedAssemblies 'System.Drawing'
-			$MemberDefinition = @(
-				'[DllImport("Shell32.dll", SetLastError=true)]'
-				'public static extern int ExtractIconEx(string lpszFile, int nIconIndex, out IntPtr phiconLarge, out IntPtr phiconSmall, int nIcons);'
-				''
-				'[DllImport("gdi32.dll", SetLastError=true)]'
-				'public static extern bool DeleteObject(IntPtr hObject);'
-			) -join "`n"
-			Add-Type -Namespace Win32API -Name Icon -MemberDefinition $MemberDefinition
-		} catch {
-			Shout "Type 'Win32API.Icon' already exist. Relaunch the console. Error:`n $_"
-		}
-
-		try {
-			if (!($directory)) {
-				$directory = SelectPath -files
-				if ($directory){
-					$file_GUI = $true
-				}
-			}
-
-			Shout "Let's start extracting icons from exes" -color Green -new
-			Shout "-----------------"
-			Timer -start
-
-			function GetICO {
-				param (
-					[string]$p
-				)
-
-				$hi, $low = 0, 0
-				$null = [Win32API.Icon]::ExtractIconEx($($p), $index, [ref]$hi, [ref]$low, 1)
-				$handle = if ($small) { $low } else { $hi }
-
-				try {
-					$icon = [System.Drawing.Icon]::FromHandle($handle)
-				} catch {
-					return $false
-				}
-
-				$hi, $low, $handle | Where-Object { $_ } | ForEach-Object { [Win32API.Icon]::DeleteObject($_) } | Out-Null
-				return $icon
-			}
-
-			foreach ($i in $directory) {
-				if (Test-Path $i){
-					if ($file_GUI){
-						$resolved_path = Get-ChildItem -Path $i -Filter '*.exe' 
-					} else {
-						$resolved_path = Get-ChildItem -Path $i -Filter '*.exe' -Recurse -Depth $depth
-					}
-
-					foreach ($_path in $resolved_path){
-						if ($_path) {
-							Shout "Extracting icons from:`n $($_path.FullName)" -color Yellow -new
-							$icon = GetICO -p $($_path.FullName)
-
-							if ($icon){
-								if ($format -eq 'ico') {
-									$out_png = Join-Path -Path "$($_path.Directory.FullName)" -ChildPath "$($_path.BaseName)_tmp.png"
-									$out_ico = Join-Path -Path "$($_path.Directory.FullName)" -ChildPath "$($_path.BaseName)_icon.ico"
-									$icon.ToBitmap().Save($out_png)
-									if ($small){
-										$sizes = ( 16 )
-									} else {
-										$sizes = ( 32 )
-									}
-
-									$null = [ImagingHelper]::ConvertToIcon("$out_png", "$out_ico", $sizes)
-									if (Test-Path $out_png){
-										Remove-Item $out_png -Force -ErrorAction SilentlyContinue
-									}
-									$out = $out_ico
-								} else {
-									$out = Join-Path -Path $_path.Directory.FullName -ChildPath "$($_path.BaseName)_icon.$format"
-									$icon.ToBitmap().Save($out)
-								}
-								if (Test-Path -Path "$out"){
-									Shout "Icon was extracted to:`n $out" -color Green
-								} else {
-									Shout "Icon was NOT extracted from:`n $($_path.FullName)" -color Red
-								}
-							} else {
-								Shout "Can't find any icon in:`n $($_path.FullName)" -color Red
-							}
-						} else {
-							Shout "No exe files in path:`n $($_path.FullName)" -color Red
-						}
-					} #foreach
-				} else {
-					Shout "Path is not exist:`n $($_path.FullName)" -color Red
-				}
-			} #foreach
-		} catch {
-			Shout "Error:$_" -color Red -new
-			Shout "$($_.ScriptStackTrace)" -color Red -new -after
-		}
-	Timer -end
 }
 
 function apply {
-	[CmdletBinding()]
-	param (
-		[Alias('d')]
-		[string[]]$directory,
-		[Alias('p')]
-		[ValidateSet('any', 'icon', 'folder')]
-		$priority,
-		[Alias('f')]
-		[string[]]$filter,
-		[Alias('s')]
-		[switch]$single,
-		[Alias('rm')]
-		[switch]$remove,
-		[Alias('l')]
-		[string]$log,
-		[Alias('dep')]
-		$dependencies,
-		[int]$depth = 0
-	)
-	
-		$ErrorActionPreference = 'Stop'
-		$pattern_regex = '[^\w\s]'
-		$pattern_regex_symbols = '[!#$%&()+;@^_{}~№]'
-		$pattern_regex_digits = '\d+'
+    [CmdletBinding()]
+    param (
+        [Alias('d')]
+        [string[]]$directory,
+        [Alias('p')]
+        [ValidateSet('ico', 'exe')]
+        $priority,
+        [Alias('f')]
+        [string[]]$filter,
+        [Alias('s')]
+        [switch]$single,
+        [Alias('rm')]
+        [switch]$remove,
+        [Alias('l')]
+        [string]$log,
+        [Alias('r')]
+        $rules,
+        [Alias('nf')]
+        [switch]$NoForce,
+        [Alias('sd')]
+        [int]$search_depth = 0,
+        [Alias('ad')]
+        [int]$apply_depth = 0
+    )
+    
+        $ErrorActionPreference = 'Stop'
 
-		try {
-			if (!($directory)) {
-				$directory = SelectPath
-			}
-			if (!($directory)) {
-				return
-			}
-			Shout "Let's start applying icons to folders" -color Green -new
-			Shout "-----------------"
-			Timer -start
+        try {
+            if (!($directory)) {
+                $directory = SelectPath
+            }
+            if (!($directory)) {
+                return
+            }
+            $foldersError = @()
 
-			foreach ($i in $directory) {
-				if (Test-Path -Path $i) {
-					Shout "$i" -color Green
-					if ($single) {
-						$folders += Get-Item -Path $i -ErrorAction SilentlyContinue
-					} else {
-						$folders += Get-ChildItem -Path $i -Directory -Depth $depth -ErrorAction SilentlyContinue
-					}
-				} else {
-					Shout "Folder `'$i`' does not exist" -color Red
-					continue
-				}
-			}
-			
-			if ($remove) {
-				Shout "Icons have been removed from folders! Restarting explorer!"
-				Stop-Process -Name explorer -Force; Start-Process explorer
-			} elseif ($filter) {
-				Shout "Your filter list:" -new -color Yellow
-				Shout "-----------------"
-				foreach ($i in $filter){ Shout "$i" -color Yellow }
-			}
-			Shout "The magic begins!" -color Cyan -new
-			Shout "-----------------"
-			[string[]]$Filter_main += $filter
-			[string[]]$Filter_main += 'WindowsApps', 'WpSystem', 'DeliveryOptimization', 'XboxGames', 'Program Files', 'Program Files (x86)', 'Windows', 'Users', 'OneCommander'
-			
-			foreach ($folder in $folders) {
-				if ($Filter_main -notcontains $($folder.Name)) {
-					try {
-						Get-ChildItem -Path "$($folder.FullName)" -Filter "desktop.ini" -Hidden -Recurse -Depth 1 | Remove-Item -Force
-						
-						if ($remove){
-							Stop-Process -Name explorer -Force
-							Start-Process explorer
-							continue
-						}
-						
-						$array_string = @()
-						$exeFiles = ''
-						$exeFile_name_checked = @()
-						$array_exes = @()
-						
-						$folder.Attributes = 'Directory', 'ReadOnly'
-					} catch {
-						Shout 'Access to the path is denied.' -color Red
-						Shout "$($folder.FullName)"
-					}
-					
-					[string]$name_folder = ($folder.Name).ToLower()
-					$name_folder = $name_folder -replace $pattern_regex, '' -replace "$pattern_regex_digits", '' -replace "$pattern_regex_symbols", ''
-					[string]$full_path_folder = $folder.FullName
-					
-					$LastDirName = Split-Path -Path $full_path_folder -Leaf
-					if (($dependencies) -and ($dependencies.ContainsKey($LastDirName))) {
-						$value = $dependencies[$LastDirName]
-						if (Test-Path $full_path_folder\$value) {
-							$exeFiles = Get-ChildItem -Path $full_path_folder -Filter $value
-						}
-					}
-					
-					if (!($exeFiles)) {
-						$tmpr = $name_folder.Trim().Split(' ')
-						foreach ($j in $tmpr) {
-							$array_string += $j
-						}
+            Shout "Let's start applying icons to folders" -color Green -new
+            Shout "-----------------"
+            Timer -start
 
-						foreach ($item in $array_string) {
-							$files = Get-ChildItem -Path $full_path_folder -Recurse -Filter "*$item*.exe"
-							Write-Verbose -Message $item
-							if ($files) { $exeFile_name_checked += $item }
-						}
-						
-						$get_first = $exeFile_name_checked[0]
-						$exeFiles = Get-ChildItem -Path $full_path_folder -Filter "*$get_first*.exe" -Recurse | Select-Object -First 1
-						foreach ($i in $exeFiles){ Write-Verbose $($i.ToString()) }
-					}
-					
-					if ((!($exeFiles)) -or ($priority -eq 'folder')) {
-						$exeFiles = Get-ChildItem -Path $full_path_folder -Filter "$name_folder.ico" -Recurse | Select-Object -First 1
-					} elseif ((!($exeFiles)) -or ($priority -eq 'icon')) {
-						$exeFiles = Get-ChildItem -Path $full_path_folder -Filter 'icon.ico' | Select-Object -First 1
-					} elseif ((!($exeFiles)) -or ($priority -eq 'any')) {
-						$exeFiles = Get-ChildItem -Path $full_path_folder -Filter '*.ico' -Recurse | Select-Object -First 1
-					}
-					
-					if (!($exeFiles)) {
-						$exeFiles = (Get-ChildItem -Path $full_path_folder -Filter '*.exe' -Recurse)
-						
-						foreach ($exeFile in $exeFiles) {
-							[string]$name_exe = ($exeFile.BaseName).ToLower() -replace "$pattern_regex_symbols", '' -replace "$pattern_regex", '' -replace "$pattern_regex_digits", ''
-							if (($name_folder -like $name_exe) `
-								-or ($name_folder -match $name_exe) `
-								-or ($name_folder.Contains($name_exe)) `
-								-or ($name_exe.Contains($name_folder))) {
-								
-								$array_exes += $exeFile
-							} elseif ($name_exe) {
-								$array_exes += $exeFile
-							}
-						}
-						$exeFiles = $array_exes[0]
-					}
-					
-					if ($exeFiles) {
-						$first_part = ''
-						[string]$name_exe = ($exeFiles.BaseName).ToLower()
-						
-						Write-Verbose -Message "exe name: $name_exe"
+            [string[]]$Filter_main += $filter
+            [string[]]$Filter_main += 'WindowsApps', 'WpSystem', 'DeliveryOptimization', 'XboxGames', 'Program Files', 'Program Files (x86)', 'Windows', 'Users', 'OneCommander', '$RECYCLE.BIN', 'System Volume Information'
 
-						if (($exeFiles.DirectoryName -ne $full_path_folder)) {
-							$exe_array = ($exeFiles.DirectoryName).Split('\')
-							$folder_array = ($full_path_folder).Split('\')
-							$diff = (Compare-Object -ReferenceObject $exe_array -DifferenceObject $folder_array).InputObject
+            foreach ($i in $directory) {
+                if (Test-Path -Path $i) {
+                    Shout "Selected folder: $i" -color Green
+                    try {
+                        if ($single) {
+                            $folders += Get-Item -LiteralPath "$i" -ErrorAction SilentlyContinue
+                        } else {
+                            $folders += Get-ChildItem -LiteralPath "$i" -Directory -Depth $apply_depth -ErrorAction SilentlyContinue
+                        }
+                    } catch {Write-Host "Error: $($_.Exception.Message)"}
 
-							foreach ($k in $diff) {
-								$first_part = $first_part + '\' + $k
-							}
-						}
+                } else {
+                    Shout "Folder `'$i`' does not exist" -color Red
+                    continue
+                }
+            }
+            
+            if ($filter) {
+                Shout "Your filter list:" -new -color Yellow
+                Shout "-----------------"
+                foreach ($i in $filter){ Shout "$i" -color Yellow }
+            }
 
-						$tmpDir = (Join-Path -Path $env:TEMP -ChildPath ([IO.Path]::GetRandomFileName()))
-						$null = mkdir -Path $tmpDir -Force
-						$tmp = "$tmpDir\desktop.ini"
+            Shout "Processing folders:" -color Cyan -new
+            Shout "$($folders -join "`n")" -color DarkBlue
+        
+            $primaryType = if ($priority -eq 'ico') { 'ico' } else { 'exe' }
+            $secondaryType = if ($priority -eq 'ico') { 'exe' } else { 'ico' }
+            Shout "Priority '$primaryType'" -new
+            foreach ($folder in $folders) {
+            
+                if ($remove) {
+                    try {
+                        if ($single) {
+                            write-host "1111 $($folder.FullName)"
+                            $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -ErrorAction SilentlyContinue
+                        } else {
+                            write-host "2222 $($folder.FullName)"
+                            $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -Recurse -Depth 1 -ErrorAction SilentlyContinue
+                        }
+                        $desktopINI | Remove-Item -Force
+                    } catch {
+                        Shout 'Access to the path is denied. Cant proseed with desktop.ini file. Skiping...' -color Red
+                        Shout "$($folder.FullName)"
+                        continue
+                    }
+                    continue
+                }
 
-						if ($first_part) {
-							$value = '.' + "$first_part\$exeFiles" + ',0'
-						} else {
-							$value = '.\' + $exeFiles + ',0'
-						}
+                $shouldSkip = Test-ForbiddenFolder -Path $folder.FullName -ForbiddenFolders $Filter_main
+            
+                if (-not $shouldSkip) {
+                
+                    Shout "Processing folder: `'$($folder.FullName)`'" -color Cyan -new
+                    
+                    $Files = ''
+                    $folder.Attributes = 'Directory', 'ReadOnly'
+                    
+                    [string]$full_path_folder = $folder.FullName
+                    
+                    $LastDirName = Split-Path -Path "$full_path_folder" -Leaf
+                    if (($rules) -and ($rules.ContainsKey($LastDirName))) {
+                        $value = $rules[$LastDirName]
+                        if (Test-Path "$full_path_folder\$value") {
+                            $Files = Get-ChildItem -LiteralPath "$full_path_folder" -Filter $value
+                        }
+                    }
+                
+                if (-not $Files) {
+                    $Files = Find-Candidates -path $full_path_folder -search_depth $search_depth -priority $primaryType
+                }
+                
+                if (-not $Files) {
+                    Shout "$primaryType files not found, switching to $secondaryType search" -color Yellow
+                    $Files = Find-Candidates -path $full_path_folder -search_depth $search_depth -priority $secondaryType
+                }
+                
+                    if ($Files) {
+                        #Testing path 
+                        try {
+                            if ($single) {
+                                $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -ErrorAction SilentlyContinue
+                            } else {
+                                $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -Recurse -Depth 1 -ErrorAction SilentlyContinue
+                            }
+                        } catch {
+                            Shout 'Access to the path is denied. Cant proseed with desktop.ini file. Skiping...' -color Red
+                            Shout "$($folder.FullName)"
+                            continue
+                        }
 
-						$ini = @(
-							'[.ShellClassInfo]'
-							"IconResource=$value"
-							"InfoTip=$exeFiles"
-							'[ViewState]'
-							'Mode='
-							'Vid='
-							'FolderType=Generic') -join "`n"
+                        if (!($NoForce)){
+                            #Forcing desktop.ini deletion
+                            $desktopINI | Remove-Item -Force
+                        } else {
+                            if (!($desktopINI)) {
+                                Shout "desktop.ini not found. Proceeding with creation" -color Green
+                            } else {
+                                $found = $false
+                                $content = Get-Content -LiteralPath "$($desktopINI.FullName)" -ErrorAction Stop
+                                foreach ($line in $content) {
+                                    if ($line -match '^IconResource=') {
+                                        $found = $true
+                                        break
+                                    }
+                                }
+                                if ($found) {
+                                    Shout "desktop.ini already exist. Skipping due to -NoForce flag" -color Yellow
+                                    continue
+                                }
+                            }
+                        }
 
-						$null = New-Item -Path $tmp -Value $ini
-						
-						(Get-Item -Path $tmp).Attributes = 'Archive, System, Hidden'
-						
-						$shell = New-Object -ComObject Shell.Application
-						$shell.NameSpace($full_path_folder).MoveHere($tmp, 0x0004 + 0x0010 + 0x0400)
-						
-						Remove-Item -Path $tmpDir -Force
-						
-						Shout "$($exeFiles.Name) --> $($folder.Name)" -color Green
-						Write-Verbose -Message "exe and index: $value"
-						
-					} else {
-						Shout "Proper exe not found in $full_path_folder" -color Yellow
-					}
-				} else {
-					Shout "Folder `'$folder`' filtered" -color Yellow
-				}
-			}
-		} catch {
-			Shout "$_" -color Red -new
-			Shout "$($_.ScriptStackTrace)" -color Red -new -after
-		}
+                        #### Creating desktop.ini file starts
+                        $first_part = ''
 
-	Timer -end
+                        if (($Files.DirectoryName -ne $full_path_folder)) {
+                            $exe_array = ($Files.DirectoryName).Split('\')
+                            $folder_array = ($full_path_folder).Split('\')
+                            $diff = (Compare-Object -ReferenceObject $exe_array -DifferenceObject $folder_array).InputObject
+
+                            foreach ($k in $diff) {
+                                $first_part = $first_part + '\' + $k
+                            }
+                        }
+
+                        $tmpDir = (Join-Path -Path "$env:TEMP" -ChildPath ([IO.Path]::GetRandomFileName()))
+                        $null = mkdir -Path $tmpDir -Force
+                        $tmp = "$tmpDir\desktop.ini"
+
+                        if ($first_part) {
+                            $value = '.' + "$first_part\$Files" + ',0'
+                        } else {
+                            $value = '.\' + $Files + ',0'
+                        }
+
+                        $ini = @(
+                            '[.ShellClassInfo]'
+                            "IconResource=$value"
+                            #"InfoTip=$exeFiles"
+                            '[ViewState]'
+                            'Mode='
+                            'Vid='
+                            'FolderType=Generic') -join "`n"
+
+                        $null = New-Item -Path "$tmp" -Value $ini
+                        
+                        (Get-Item -LiteralPath $tmp).Attributes = 'Archive, System, Hidden'
+                        
+                        $shell = New-Object -ComObject Shell.Application
+                        $shell.NameSpace($full_path_folder).MoveHere($tmp, 0x0004 + 0x0010 + 0x0400)
+                        #### Creating desktop.ini file ends
+
+                        Remove-Item -Path "$tmpDir" -Force
+                        
+                        Shout "$($Files.Name) --> $($folder.Name)" -color Green
+                    } else {
+                        Shout "Proper file not found" -color Red
+                        $foldersError += $full_path_folder
+                    }
+                } else {
+                    Shout "Skipping filtered folder: $($folder.FullName)" -color DarkGray -new
+                }
+            }
+
+            if ($remove) {
+                Shout "Icons have been removed from folders! Explorer must be restarted!" -color Yellow
+                Shout "Press R to restart" -color Magenta
+                Shout "Press any other key to cancel" -color Cyan
+                $key = [System.Console]::ReadKey($true)
+
+                if ($key.Key -eq 'R') {
+                    Shout "Restarting Explorer..." -color Yellow
+                    Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
+                    Start-Sleep -Seconds 1
+                    Start-Process explorer.exe
+                    Shout "Explorer restarted." -color Green
+                } else {
+                    Shout "Operation cancelled." -color DarkGray
+                }
+            }
+
+            if ($foldersError) {
+                Shout "Folders with errors:" -color Red -new
+                Shout "$($foldersError -join "`n")" -color Red
+                Shout "Proper files not found. Try to increase search depth with -search_depth (current $search_depth)" -color Red -new
+                $foldersError = @()
+            }
+            Shout "------------`n    DONE`n------------" -color Green
+        } catch {
+            Shout "$_" -color Red -new
+            Shout "$($_.ScriptStackTrace)" -color Red -new -after
+        }
+
+    Timer -end
 }
+
+<#
+
+pull -d "C:\Users\Justdj\Desktop\Unpack\WorldOfTanks.exe" -log 'C:\Users\Justdj\Desktop\Unpack\log.txt'
+
+apply -d 'D:\Progs' -dependencies @{"Inno Setup 5" = "Compil32.exe"}
+
+apply -d "D:\test3\Davinci Resolve" -priority "any" -single
+
+#>
+
+#pull -directory "C:\Users\Justdj\Desktop\Unpack\WorldOfTanks.exe" -log 'C:\Users\Justdj\Desktop\Unpack\log.txt'
+
+#apply -directory 'E:\' -p ico -single -NoForce
+#apply -directory 'D:\Progs' -log 'D:\Progs\log.log' -search_depth 0 -priority ico
+#apply -directory 'D:\Progs' -priority ico
+#apply -directory 'D:\Progs' -rm
