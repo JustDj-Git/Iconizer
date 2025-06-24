@@ -655,6 +655,7 @@ function pull {
         [Alias('a')]
         [switch]$all,
         [switch]$folder,
+        [switch]$pause,
         [Alias('l')]
         [string]$log
     )
@@ -719,7 +720,12 @@ function pull {
         Shout "Error:$_" -color Red -new
         Shout "$($_.ScriptStackTrace)" -color Red -new -after
     }
-Timer -end
+    
+    Timer -end
+    
+    if ($pause){
+        pause
+    }
 }
 
 function apply {
@@ -742,6 +748,7 @@ function apply {
         $rules,
         [Alias('nf')]
         [switch]$NoForce,
+        [switch]$pause,
         [Alias('sd')]
         [int]$search_depth = 0,
         [Alias('ad')]
@@ -953,4 +960,8 @@ function apply {
     }
     
     Timer -end
+    
+    if ($pause){
+        pause
+    }
 }

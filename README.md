@@ -89,6 +89,7 @@ Extract icons from executable files with various options and formats.
 | `-all`       | `-a`   | switch   | Extract all icons                     |                                  |
 | `-folder`    |        | switch   | Opens a folder selection dialog       |                                  |
 | `-log`       | `-l`   | string   | Enable logging to specified file path | `-l 'C:\task_log.txt'`           |
+| `-pause`     |        | switch   | To pause script in the end            |                                  |
 
 >[!TIP]
 > If **`directory`** is not specified, a system FileDialog will open.
@@ -133,12 +134,13 @@ irm icon.scripts.wiki | iex; pull -d 'C:\app.exe' -info
 | `-priority`     | `-p`   | string    | Icon selection priority (`ico`, `exe`) | -p `'exe'`                                |
 | `-filter`       | `-f`   | string[]  | Folder names to exclude                | -f `'FIRST_NAME', 'SECOND_NAME'`          |
 | `-single`       | `-s`   | switch    | Non-recursive folder apply             |                                           |
-| `-rules`        | `-r`   | hashtable | Custom icon applying rules             | `@{"X" = "N.exe"; "Y" = "Z.exe"}` |
+| `-rules`        | `-r`   | hashtable | Custom icon applying rules             | `@{"X" = "N.exe"; "Y" = "Z.exe"}`         |
 | `-NoForce`      | `-nf`  | switch    | Skip folders with existing desktop.ini |                                           |
 | `-search_depth` | `-sd`  | int       | Icon file search depth                 | `-sd 2`                                   |
 | `-apply_depth`  | `-ad`  | int       | Folder processing depth                | `-ad 2`                                   |
 | `-remove`       | `-rm`  | switch    | Remove folder icons                    |                                           |
-| `-log`          | `-l`   | string    | Enable logging to specified file path  | `-l 'C:\log.txt'`                    |
+| `-log`          | `-l`   | string    | Enable logging to specified file path  | `-l 'C:\log.txt'`                         |
+| `-pause`        |        | switch    | To pause script in the end             |                                           |
 
 >[!TIP]
 > If **`directory`** is not specified, a system FileDialog will open.
