@@ -766,6 +766,7 @@ function apply {
         
         $ErrorActionPreference = 'Stop'
         $foldersError = @()
+        $folders = @()
         Shout "Let's start applying icons to folders" -color Green -new
         Shout "-----------------"
         Timer -start
@@ -773,21 +774,28 @@ function apply {
         [string[]]$Filter_main += $filter
         [string[]]$Filter_main += 'WindowsApps', 'WpSystem', 'DeliveryOptimization', 'XboxGames', 'Program Files', 'Program Files (x86)', 'Windows', 'Users', 'OneCommander', '$RECYCLE.BIN', 'System Volume Information'
         
+        if (($directory.Count -eq 1)) {
+            $single = $true
+            Shout "Single folder detected. Switching to single mode." -color Yellow
+        }
+        
         foreach ($i in $directory) {
             if (Test-Path -Path $i) {
                 Shout "Selected folder: $i" -color Green
-                try {
-                    if ($single) {
-                        $folders += Get-Item -LiteralPath "$i" -ErrorAction SilentlyContinue
-                    } else {
-                        $folders += Get-ChildItem -LiteralPath "$i" -Directory -Depth $apply_depth -ErrorAction SilentlyContinue
-                    }
-                } catch {Write-Host "Error: $($_.Exception.Message)"}
-                
+                if ($single) {
+                    $folders += Get-Item -LiteralPath "$i" -ErrorAction SilentlyContinue
+                } else {
+                    $folders += Get-ChildItem -LiteralPath "$i" -Directory -Depth $apply_depth -ErrorAction SilentlyContinue
+                }
             } else {
                 Shout "Folder `'$i`' does not exist" -color Red
                 continue
             }
+        }
+        
+        if ($folders.Count -eq 0) {
+            Shout "Folders not found or inaccessible" -color Red
+            return
         }
         
         if ($filter) {
