@@ -631,10 +631,12 @@ function Test-ForbiddenFolder {
         [string[]]$ForbiddenFolders
     )
     
+    if (-not $ForbiddenFolders) { return $false }
+    
     $pathParts = $Path -split '\\' | Where-Object { $_ -ne '' }
     
     foreach ($forbiddenFolder in $ForbiddenFolders) {
-        if ($pathParts -contains $forbiddenFolder) {
+        if ($forbiddenFolder -and $pathParts -contains $forbiddenFolder) {
             return $true
         }
     }
@@ -961,7 +963,7 @@ function apply {
             Shout "Proper files not found. Try to increase search depth with -search_depth (current $search_depth)" -color Red -new
             $foldersError = @()
         }
-        Shout "------------`n    DONE`n------------" -color Green
+        Shout "------------`n    DONE`n------------" -color Green -new -after
     } catch {
         Shout "$_" -color Red -new
         Shout "$($_.ScriptStackTrace)" -color Red -new -after

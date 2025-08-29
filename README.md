@@ -5,7 +5,7 @@
 </p>
 Iconizer is a lightweight PowerShell tool designed to extract icons from .exe files and assigning custom icons files to folders — with zero installation, configuration, or leftover traces.
 
-The core idea is simplicity and portability: just run the script from anywhere and get immediate results. No dependencies, no setup — just clean PowerShell and native Windows functionality.
+The core idea is simplicity and portability: just run the script from anywhere and get immediate results. No dependencies, no setup — just clean PowerShell with c# seasoning and native Windows functionality.
 
 The script consists of two parts. The first part, **`pull`**, involves extracting icons from executable files (`.exe`) and saving them in different formats. The second part, **`apply`**, customizes folder icons by locating `.exe` or `.ico` files and creating a `desktop.ini` file with the required settings to display an icon on a folder, making both tools useful for developers and users who need efficient icon management solutions.
 
@@ -46,7 +46,7 @@ The script consists of two parts. The first part, **`pull`**, involves extractin
 
 >[!NOTE]
 > Direct link for security-conscious users:
-<https://raw.githubusercontent.com/JustDj-Git/Iconizer/refs/heads/main/Iconizer.ps1>
+<https://raw.githubusercontent.com/JustDj-Git/Iconizer/main/Iconizer.ps1>
 
 1. Open PowerShell (not CMD). Right-click on the Windows start menu and find PowerShell (or Terminal), or press `Win + S` and type Powershell.
 2. Copy and paste the code below and press enter for invoking **`pull`** function only
@@ -68,10 +68,8 @@ irm icon.scripts.wiki | iex; pull; apply
 ```
 
 ```powershell
-irm https://raw.githubusercontent.com/JustDj-Git/Iconizer/refs/heads/main/Iconizer.ps1 | iex; pull
+irm https://raw.githubusercontent.com/JustDj-Git/Iconizer/main/Iconizer.ps1 | iex; pull
 ```
-
----
 
 ## 🔧 Icon Extraction (`pull`)
 
@@ -119,10 +117,7 @@ irm icon.scripts.wiki | iex; pull -d 'C:\Programs\' -index 2 -depth 3
 
 # Get icon information without extraction
 irm icon.scripts.wiki | iex; pull -d 'C:\app.exe' -info
-
 ```
-
----
 
 ## 🎯 Folder Customization (`apply`)
 
@@ -144,8 +139,7 @@ irm icon.scripts.wiki | iex; pull -d 'C:\app.exe' -info
 
 >[!TIP]
 > If **`directory`** is not specified, a system FileDialog will open.
-
----
+> If multiple .ico or .exe files are found and the script does not find any filename matching the folder name, it will select the first suitable file from the list. You can rename the .ico file to match the folder name (or similar one) to prevent this from happening.
 
 ### ⚙️ Examples with `apply`
 
@@ -189,8 +183,6 @@ irm icon.scripts.wiki | iex; apply -d 'D:\Programs' -r $deps
 irm icon.scripts.wiki | iex; apply -d 'D:\Programs' -rm
 ```
 
----
-
 ## 🔍 Troubleshooting
 
 ### Permission Errors
@@ -214,8 +206,6 @@ pull -d 'app.exe' -index 2
 pull -d 'app.exe' -all
 ```
 
----
-
 ## ⚡ Important Notes
 
 ### System Requirements
@@ -235,13 +225,9 @@ pull -d 'app.exe' -all
 - Use appropriate `-depth` values to limit recursion
 - Consider using `-info` mode for initial assessment
 
----
-
 ## 📄 License
 
 This project is provided as-is for educational and personal use. Please respect software licenses when extracting icons from commercial applications.
-
----
 
 ## 🤝 Contributing
 
