@@ -1,35 +1,4 @@
-function Shout {
-    param(
-        [parameter(Mandatory = $true)]
-        [string]$text,
-        [string]$color,
-        [switch]$new,
-        [switch]$after,
-        [switch]$date
-    )
-    
-    if (($date) -or ($log)){
-        $_date = (Get-Date -Format "MM/dd/yy HH:mm:ss").ToString()
-        $finaltext = "{0} {1}" -f $_date, $text
-    } else {
-        $finaltext = $text
-    }
-    
-    if ($new){ $finaltext = "`n" + $finaltext }
-    if ($after){ $finaltext = $finaltext + "`n" }
-    if ($log) { $finaltext | Out-File -FilePath $log -Append -ErrorAction SilentlyContinue }
-    
-    if ($color){
-        if (-not ([Enum]::IsDefined([System.ConsoleColor], $color))) {
-            Write-Host "$color doesn't exist in System.ConsoleColor" -ForegroundColor Red
-            Write-Host $finaltext
-        } else {
-            Write-Host $finaltext -ForegroundColor $color
-        }
-    } else {
-        Write-Host $finaltext
-    }
-}
+$DebugPreference = 'Continue'
 
 function Timer {
     param(
@@ -43,7 +12,7 @@ function Timer {
         $global:timer.Stop()
         $timeRound = [Math]::Round(($global:timer.Elapsed.TotalSeconds), 2)
         $global:timer.Reset()
-        Shout "Task completed in $timeRound`s" -color Cyan -new
+        Write-Host "----------`nTask completed in $timeRound`s" -ForegroundColor Cyan
     }
 }
 
@@ -92,7 +61,7 @@ function SelectPath {
     }
 }
 
-function Import-Type {
+function Import-Type-Pull {
     try {
         Add-Type -TypeDefinition @"
 using System;
@@ -166,12 +135,12 @@ public class IconExtractor
     Add-Type -AssemblyName System.Drawing
 
     } catch [System.Exception] {
-        Write-Host "An unexpected error occurred in Import-Type: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "An unexpected error occurred in Import-Type-Pull: $($_.Exception.Message)" -ForegroundColor Red
         return
     }
 }
 
-function Get-IconsByGroup {
+function Get-IconsByGroup-Pull {
     param(
         [string]$FilePath,
         [int]$index = 1,
@@ -182,7 +151,7 @@ function Get-IconsByGroup {
     )
     
     if (-not (Test-Path $FilePath)) {
-        Shout "File not found: $FilePath" -color Red
+        Write-Host "File not found: $FilePath" -ForegroundColor Red
         return
     }
     
@@ -199,7 +168,7 @@ function Get-IconsByGroup {
     $hModule = [IconExtractor]::LoadLibraryEx($FilePath, [IntPtr]::Zero, [IconExtractor]::LOAD_LIBRARY_AS_DATAFILE)
     
     if ($hModule -eq [IntPtr]::Zero) {
-        Shout "Failed to load file!" -color Red
+        Write-Host "Failed to load IconExtractor!" -ForegroundColor Red
         return
     }
     
@@ -211,13 +180,12 @@ function Get-IconsByGroup {
         $script:processedGroups = @()
         $script:resourcesNames = @()
         
-        $message = if ($script:extractAll) {
-            'Analyzing all icon groups'
+        if ($script:extractAll) {
+            Write-Host 'Analyzing all icon groups' -ForegroundColor Yellow
         } else {
-            "Analyzing group #$index"
+            Write-Host "Analyzing group " -NoNewline -ForegroundColor DarkGray
+            Write-Host "#$index" -ForegroundColor Yellow
         }
-        
-        Shout "$message..." -color Yellow -new
         
         $callback = {
             param($hMod, $lpType, $lpName, $lParam)
@@ -245,8 +213,8 @@ function Get-IconsByGroup {
                 }
             }
             
-            Shout "Extracting group #$script:currentGroup ($resourceName)..." -color Green -new
-            
+            Write-Host "Extracting group " -ForegroundColor DarkGray -NoNewline
+            Write-Host "#$script:currentGroup ($resourceName)" -ForegroundColor Green
             # Load and analyze icon group resource
             $hResInfo = [IntPtr]::Zero
             
@@ -259,7 +227,7 @@ function Get-IconsByGroup {
                         $hResInfo = [IconExtractor]::FindResourceW($hMod, $stringName, [IntPtr][IconExtractor]::RT_GROUP_ICON)
                     }
                 } catch {
-                    Shout "Error processing string name" -color Red
+                    Write-Host "Error processing string name" -ForegroundColor Red
                 }
             }
             
@@ -279,7 +247,8 @@ function Get-IconsByGroup {
                         # Parse group icon header
                         $iconCount = [BitConverter]::ToUInt16($iconDir, 4)
                         
-                        Shout "Icons found in group: $iconCount" -color Cyan
+                        Write-Host "Icons found in group: " -ForegroundColor DarkGray -NoNewline
+                        Write-Host "$iconCount`n" -ForegroundColor Cyan
                         
                         # Create ICO file
                         if ($all){
@@ -352,7 +321,7 @@ function Get-IconsByGroup {
                                             if ($bitCount -eq 0) { $bitCount = 32 }
                                             if ($width -eq 0) { $width = 256 }
                                             if ($height -eq 0) { $height = 256 }
-                                            Shout "  Icon $($i+1): ${width}x${height}, $bitCount bit, $iconSize bytes" -color Gray
+                                            Write-Host "  Icon $($i+1): ${width}x${height}, $bitCount bit, $iconSize bytes" -ForegroundColor Gray
                                         }
                                     }
                                 }
@@ -368,7 +337,8 @@ function Get-IconsByGroup {
                                     $allData += $iconBytes
                                 }
                                 [System.IO.File]::WriteAllBytes($icoPath, $allData)
-                                Shout "Saved: $icoPath" -color Green
+                                Write-Host "`nSaved: " -NoNewline -ForegroundColor DarkGray
+                                Write-Host "$icoPath" -ForegroundColor Green
                             }
                             $script:totalExtracted++
                             $script:processedGroups += $script:currentGroup
@@ -380,7 +350,7 @@ function Get-IconsByGroup {
             }
             
             if (-not $groupExtracted) {
-                Shout "Failed to extract group #$script:currentGroup" -color Red
+                Write-Host "Failed to extract group #$script:currentGroup" -ForegroundColor Red
             }
             
             # Extract largest icon from current group as PNG if requested
@@ -403,14 +373,15 @@ function Get-IconsByGroup {
         
         if ($script:totalExtracted -eq 0) {
             if ($script:extractAll) {
-                Shout "No icon groups found or failed to extract any groups" -color Red
+                Write-Host "No icon groups found or failed to extract any groups" -ForegroundColor Red
             } else {
-                Shout "Group #$index not found or failed to extract" -color Red
+                Write-Host "Group #$index not found or failed to extract" -ForegroundColor Red
             }
         } else {
-            Shout "Extraction completed successfully!" -color Green -new -after
-            Shout "Total groups extracted: $script:totalExtracted" -color Green
-            Shout "Processed groups: $($script:resourcesNames -join ', ')" -color Cyan -after
+            Write-Host "Total groups extracted: " -NoNewline -ForegroundColor DarkGray
+            Write-Host "$script:totalExtracted" -ForegroundColor Cyan
+            Write-Host "Processed groups: " -NoNewline -ForegroundColor DarkGray
+            Write-Host "$($script:resourcesNames -join ', ')" -ForegroundColor Cyan
         }
     }
     finally {
@@ -426,7 +397,7 @@ function Convert-IconToPNG {
     )
     
     try {
-        Shout "Extracting icon as PNG: $($IconData.Width)x$($IconData.Height) from Group $($IconData.Group)" -color Cyan
+        Write-Host "Extracting icon as PNG: $($IconData.Width)x$($IconData.Height) from Group $($IconData.Group)" -ForegroundColor Cyan
         
         $conversionSuccess = $false
         
@@ -442,7 +413,7 @@ function Convert-IconToPNG {
             }
             
             if ($isPng) {
-                Shout "Icon data is already PNG format, saving directly..." -color Cyan
+                Write-Host "Icon data is already PNG format, saving directly..." -ForegroundColor Cyan
                 [System.IO.File]::WriteAllBytes($PngPath, $IconData.Data)
                 $conversionSuccess = $true
             }
@@ -470,12 +441,12 @@ function Convert-IconToPNG {
                 $tempIcoPath = Join-Path $env:TEMP "temp_largest_icon.ico"
                 [System.IO.File]::WriteAllBytes($tempIcoPath, $tempIcoData)
                 
-                Shout "Saving as png..." -color Cyan
+                Write-Host "Saving as png..." -ForegroundColor Cyan
                 
                 # Try multiple .NET approaches
                 try {
                     # Approach 1: Direct Icon loading
-                    Shout "Using direct Icon loading..." -color Cyan
+                    Write-Host "Using direct Icon loading..." -ForegroundColor Cyan
                     $icon = [System.Drawing.Icon]::new($tempIcoPath)
                     $bitmap = $icon.ToBitmap()
                     $bitmap.Save($PngPath, [System.Drawing.Imaging.ImageFormat]::Png)
@@ -483,11 +454,11 @@ function Convert-IconToPNG {
                     $icon.Dispose()
                     $conversionSuccess = $true
                 } catch {
-                    Shout "Direct Icon loading failed: $($_.Exception.Message)" -color Yellow
+                    Write-Host "Direct Icon loading failed: $($_.Exception.Message)" -ForegroundColor Yellow
                     
                     # Approach 2: Try extracting from file stream
                     try {
-                        Shout "Using FileStream approach..." -color Cyan
+                        Write-Host "Using FileStream approach..." -ForegroundColor Cyan
                         $fileStream = [System.IO.FileStream]::new($tempIcoPath, [System.IO.FileMode]::Open)
                         $icon = [System.Drawing.Icon]::new($fileStream)
                         $bitmap = $icon.ToBitmap()
@@ -497,7 +468,7 @@ function Convert-IconToPNG {
                         $fileStream.Close()
                         $conversionSuccess = $true
                     } catch {
-                        Shout "FileStream approach failed: $($_.Exception.Message)" -color Yellow
+                        Write-Host "FileStream approach failed: $($_.Exception.Message)" -ForegroundColor Yellow
                     }
                 }
                 
@@ -505,29 +476,29 @@ function Convert-IconToPNG {
                 Remove-Item $tempIcoPath -Force -ErrorAction SilentlyContinue
                 
             } catch {
-                Shout ".NET conversion failed: $($_.Exception.Message)" -color Yellow
+                Write-Host ".NET conversion failed: $($_.Exception.Message)" -ForegroundColor Yellow
             }
         }
         
         # Method 3: Save raw icon data as fallback
         if (-not $conversionSuccess) {
-            Shout "Saving raw icon data as fallback..." -color Yellow
+            Write-Host "Saving raw icon data as fallback..." -ForegroundColor Yellow
             $rawPath = $PngPath -replace '\.png$', '_raw.bin'
             [System.IO.File]::WriteAllBytes($rawPath, $IconData.Data)
-            Shout "Raw icon data saved: $rawPath" -color Yellow
-            Shout "You can try converting this file manually with image editing software" -color Yellow
+            Write-Host "Raw icon data saved: $rawPath" -ForegroundColor Yellow
+            Write-Host "You can try converting this file manually with image editing software" -ForegroundColor Yellow
         }
         
         if ($conversionSuccess) {
-            Shout "Icon saved as PNG: $PngPath" -color Green
+            Write-Host "Icon saved as PNG: $PngPath" -ForegroundColor Green
             return $true
         } else {
-            Shout "PNG conversion failed, but raw data was saved for manual conversion" -color Yellow
+            Write-Host "PNG conversion failed, but raw data was saved for manual conversion" -ForegroundColor Yellow
             return $false
         }
         
     } catch {
-        Shout "Error during PNG extraction: $($_.Exception.Message)" -color Red
+        Write-Host "Error during PNG extraction: $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
 }
@@ -555,7 +526,7 @@ function Find-Candidates {
     
     if ($allFiles) {
         if ($log) {
-            Shout "Found: $allFiles" -color DarkGray
+            Write-Host "Found: $allFiles" -ForegroundColor DarkGray
         }
         
         $candidates = @()
@@ -592,7 +563,7 @@ function Find-Candidates {
             
             if ($priority -and $file.Extension.ToLower() -eq ".$priority") {
                 $score += 400
-                Shout "Priority bonus applied to: `'$($file.Name)`'" -color Cyan
+                Write-Host "Priority bonus applied to: `'$($file.Name)`'" -ForegroundColor Cyan
             }
             
             if ($score -gt 0) {
@@ -604,7 +575,7 @@ function Find-Candidates {
                     Name  = $FileName
                 }
                 if ($log){
-                    Shout "Candidate: $($file.Name) | Score: $score" -color DarkGray
+                    Write-Host "Candidate: $($file.Name) | Score: $score" -ForegroundColor DarkGray
                 }
             }
         }
@@ -613,14 +584,14 @@ function Find-Candidates {
             $bestCandidate = $candidates | Sort-Object Score -Descending | Select-Object -First 1
             $Files = $bestCandidate.File
             if ($log) {
-                Shout "Best candidate: $($Files.Name) with score $($bestCandidate.Score)" -color DarkGray
+                Write-Host "Best candidate: $($Files.Name) with score $($bestCandidate.Score)" -ForegroundColor DarkGray
             }
         } else {
             $Files = $allFiles | Select-Object -First 1
-            Shout "No matches found, using first exe: `'$($Files.Name)`'" -color Yellow
+            Write-Host "No matches found, using first exe: `'$($Files.Name)`'" -ForegroundColor Yellow
         }
     } else {
-        Shout ".$priority candidates not found" -color Red
+        Write-Host ".$priority candidates not found" -ForegroundColor Red
     }
     return $Files
 }
@@ -630,47 +601,103 @@ function Test-ForbiddenFolder {
         [string]$Path,
         [string[]]$ForbiddenFolders
     )
-    
+
     if (-not $ForbiddenFolders) { return $false }
-    
-    $pathParts = $Path -split '\\' | Where-Object { $_ -ne '' }
-    
-    foreach ($forbiddenFolder in $ForbiddenFolders) {
-        if ($forbiddenFolder -and $pathParts -contains $forbiddenFolder) {
-            return $true
+
+    $normalizedPath = (Resolve-Path -LiteralPath $Path -ErrorAction SilentlyContinue)
+    if (-not $normalizedPath) { return $false }
+    $normalizedPath = $normalizedPath.Path
+
+    foreach ($forbidden in $ForbiddenFolders) {
+        if (-not $forbidden) { continue }
+
+        # Check for full path (starts with drive or UNC)
+        if ($forbidden -match '^[a-zA-Z]:\\' -or $forbidden.StartsWith('\\')) {
+            if ($normalizedPath -like "$forbidden*") {
+                Write-Debug "DEBUG: Path '$normalizedPath' blocked by full path filter '$forbidden'"
+                return $true
+            }
+        }
+        # Checking patterns with stars
+        elseif ($forbidden.Contains('*')) {
+            # *pattern* - в любом месте пути
+            if ($forbidden.StartsWith('*') -and $forbidden.EndsWith('*')) {
+                $pattern = $forbidden.Trim('*')
+                if ($normalizedPath -like "*$pattern*") {
+                    Write-Debug "DEBUG: Path '$normalizedPath' blocked by wildcard filter '$forbidden' (anywhere in path)"
+                    return $true
+                }
+            }
+            # *pattern - the last folder in the path must end with pattern
+            elseif ($forbidden.StartsWith('*')) {
+                $pattern = $forbidden.TrimStart('*')
+                $lastFolder = Split-Path -Leaf $normalizedPath
+                if ($lastFolder -like "*$pattern") {
+                    Write-Debug "DEBUG: Path '$normalizedPath' blocked by end-pattern filter '$forbidden' (last folder: '$lastFolder')"
+                    return $true
+                }
+            }
+            # pattern* - regular wildcard
+            else {
+                if ($normalizedPath -like "*$forbidden*") {
+                    Write-Debug "DEBUG: Path '$normalizedPath' blocked by wildcard filter '$forbidden'"
+                    return $true
+                }
+            }
+        }
+        # Exact match only for the last folder in the path
+        else {
+            $lastFolder = Split-Path -Leaf $normalizedPath
+            if ($lastFolder -eq $forbidden) {
+                Write-Debug "DEBUG: Path '$normalizedPath' blocked by exact match filter '$forbidden' (last folder: '$lastFolder')"
+                return $true
+            }
         }
     }
+
     return $false
 }
+
 
 function pull {
     [CmdletBinding()]
     param (
+        # regular dir path
         [Alias('d')]
         [string[]]$directory,
+        # index inside exe
         [Alias('i')]
         [int]$index = 1,
+        # depth of search
         [Alias('dep')]
         [int]$depth = 0,
+        # log path
+        [Alias('l')]
+        [string]$log,
+        # convert to png image format
         [switch]$png,
+        # show only info without ext
         [switch]$info,
+        # ext all posible icons in exe (only main by default)
         [Alias('a')]
         [switch]$all,
-        [switch]$folder,
-        [switch]$pause,
-        [Alias('l')]
-        [string]$log
+        # open GUI for single file (folder by default)
+        [Alias('f')]
+        [switch]$file,
+        # pause after
+        [Alias('p')]
+        [switch]$pause
     )
     
     Timer -start
     
-    Import-Type
+    Import-Type-Pull
     
     if (!($directory)) {
-        if ($folder){
-            $directory = SelectPath
-        } else {
+        if ($file){
             $directory = SelectPath -files
+        } else {
+            $directory = SelectPath
         }
         
         if ($directory){
@@ -679,16 +706,19 @@ function pull {
     }
     
     if (!($directory)) {
-        Shout "No path was selected by the user. Select the path in the GUI or specify it like -d 'full_path_to_files'" -color Red -new -after
+        Write-Host "`nNo path was selected by the user. Select the path in the GUI or specify it like -d 'full_path_to_files'`n" -ForegroundColor Red
         return
+    }
+    
+    if ($log){
+        $_log_path = Join-Path -Path $directory -ChildPath "iconizer.log"
+        Remove-Item -Path $_log_path -ErrorAction SilentlyContinue
+        Start-Transcript -Path $_log_path
     }
     
     $ErrorActionPreference = 'Stop'
     
     try {
-        Shout "Let's start extracting icons from exes" -color Green -new
-        Shout "-----------------"
-        
         foreach ($i in $directory) {
             if (Test-Path $i){
                 if ($file_GUI){
@@ -699,7 +729,8 @@ function pull {
                 
                 foreach ($_path in $resolved_path){
                     if ($_path) {
-                        Shout "Extracting icons from:`n $($_path.FullName)" -color Yellow -new
+                        Write-Host "`n--------------`nExtracting icons from:" -ForegroundColor DarkGray
+                        Write-Host " $($_path.FullName)" -ForegroundColor Green
                         $params = @{
                             FilePath  = $_path.FullName
                             OutputDir = $_path.DirectoryName
@@ -709,21 +740,25 @@ function pull {
                         if ($all) { $params.all   = $true }
                         if ($info) { $params.info  = $true }
                         if ($png) { $params.png   = $true }
-                        Get-IconsByGroup @params
+                        Get-IconsByGroup-Pull @params
                     } else {
-                        Shout "No exe files in path:`n $($_path.FullName)" -color Red
+                        Write-Host "No exe files in path:`n $($_path.FullName)" -ForegroundColor Red
                     }
                 } #foreach
             } else {
-                Shout "Path is not exist:`n $($_path.FullName)" -color Red
+                Write-Host "Path is not exist:`n $($_path.FullName)" -ForegroundColor Red
             }
         } #foreach
     } catch {
-        Shout "Error:$_" -color Red -new
-        Shout "$($_.ScriptStackTrace)" -color Red -new -after
+        Write-Host "`nError:$_" -ForegroundColor Red
+        Write-Host "`n$($_.ScriptStackTrace)`n" -ForegroundColor Red
     }
     
     Timer -end
+    
+    if ($log){
+        Stop-Transcript
+    }
     
     if ($pause){
         pause
@@ -757,61 +792,69 @@ function apply {
         [int]$apply_depth = 0
     )
     
+    if (!($directory)) {
+        $directory = SelectPath
+    }
+    
+    if (!($directory)) {
+        Write-Host "`nNo path was selected by the user. Select the path in the GUI or specify it like -d 'full_path_to_files'`n" -ForegroundColor Red
+        return
+    }
+    
+    if ($log){
+        $_log_path = Join-Path -Path $directory -ChildPath "iconizer.log"
+        Remove-Item -Path $_log_path -ErrorAction SilentlyContinue
+        Start-Transcript -Path $_log_path
+    }
+    
+    $ErrorActionPreference = 'Stop'
+    
     try {
-        if (!($directory)) {
-            $directory = SelectPath
-        }
-        if (!($directory)) {
-            Shout "No path was selected by the user. Select the path in the GUI or specify it like -d 'full_path_to_files'" -color Red -new -after
-            return
-        }
-        
-        $ErrorActionPreference = 'Stop'
         $foldersError = @()
         $folders = @()
-        Shout "Let's start applying icons to folders" -color Green -new
-        Shout "-----------------"
+        Write-Host "`nLet's start applying icons to folders" -ForegroundColor Green
+        Write-Host "-----------------"
         Timer -start
         
         [string[]]$Filter_main += $filter
-        [string[]]$Filter_main += 'WindowsApps', 'WpSystem', 'DeliveryOptimization', 'XboxGames', 'Program Files', 'Program Files (x86)', 'Windows', 'Users', 'OneCommander', '$RECYCLE.BIN', 'System Volume Information'
+        [string[]]$Filter_main += '*DeliveryOptimization*', "$env:Programfiles", "${env:ProgramFiles(x86)}", "$env:windir", '*OneCommander*', '*$RECYCLE.BIN*', '*System Volume Information*'
         
-        if (($directory.Count -eq 1)) {
+        if (($directory.Count -ge 1) -and (-not $single)) {
             $single = $true
-            Shout "Single folder detected. Switching to single mode." -color Yellow
+            Write-Host "Processing specified folders directly." -ForegroundColor Yellow
         }
         
         foreach ($i in $directory) {
             if (Test-Path -Path $i) {
-                Shout "Selected folder: $i" -color Green
+                Write-Host "Selected folder: $i" -ForegroundColor Green
                 if ($single) {
                     $folders += Get-Item -LiteralPath "$i" -ErrorAction SilentlyContinue
                 } else {
                     $folders += Get-ChildItem -LiteralPath "$i" -Directory -Depth $apply_depth -ErrorAction SilentlyContinue
                 }
             } else {
-                Shout "Folder `'$i`' does not exist" -color Red
+                Write-Host "Folder `'$i`' does not exist" -ForegroundColor Red
                 continue
             }
         }
         
         if ($folders.Count -eq 0) {
-            Shout "Folders not found or inaccessible" -color Red
+            Write-Host "Folders not found or inaccessible" -ForegroundColor Red
             return
         }
         
         if ($filter) {
-            Shout "Your filter list:" -new -color Yellow
-            Shout "-----------------"
-            foreach ($i in $filter){ Shout "$i" -color Yellow }
+            Write-Host "`nYour filter list:" -ForegroundColor Yellow
+            Write-Host "-----------------"
+            foreach ($i in $filter){ Write-Host "$i" -ForegroundColor Yellow }
         }
         
-        Shout "Processing folders:" -color Cyan -new
-        Shout "$($folders -join "`n")" -color DarkBlue
+        Write-Host "`nProcessing folders:" -ForegroundColor Cyan
+        Write-Host "$($folders -join "`n")" -ForegroundColor DarkBlue
         
         $primaryType = if ($priority -eq 'ico') { 'ico' } else { 'exe' }
         $secondaryType = if ($priority -eq 'ico') { 'exe' } else { 'ico' }
-        Shout "Priority '$primaryType'" -new
+        Write-Host "`nPriority '$primaryType'"
         foreach ($folder in $folders) {
             if ($remove) {
                 try {
@@ -822,8 +865,8 @@ function apply {
                     }
                     $desktopINI | Remove-Item -Force
                 } catch {
-                    Shout 'Access to the path is denied. Cant proseed with desktop.ini file. Skiping...' -color Red
-                    Shout "$($folder.FullName)"
+                    Write-Host 'Access to the path is denied. Cant proseed with desktop.ini file. Skiping...' -ForegroundColor Red
+                    Write-Host "$($folder.FullName)"
                     continue
                 }
                 continue
@@ -832,7 +875,7 @@ function apply {
             $shouldSkip = Test-ForbiddenFolder -Path $folder.FullName -ForbiddenFolders $Filter_main
             
             if (-not $shouldSkip) {
-                Shout "Processing folder: `'$($folder.FullName)`'" -color Cyan -new
+                Write-Host "`nProcessing folder: `'$($folder.FullName)`'" -ForegroundColor Cyan
                 $Files = ''
                 $folder.Attributes = 'Directory', 'ReadOnly'
                 [string]$full_path_folder = $folder.FullName
@@ -849,7 +892,7 @@ function apply {
                 }
                 
                 if (-not $Files) {
-                    Shout "$primaryType files not found, switching to $secondaryType search" -color Yellow
+                    Write-Host "$primaryType files not found, switching to $secondaryType search" -ForegroundColor Yellow
                     $Files = Find-Candidates -path $full_path_folder -search_depth $search_depth -priority $secondaryType
                 }
                 
@@ -862,8 +905,8 @@ function apply {
                             $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -Recurse -Depth 1 -ErrorAction SilentlyContinue
                         }
                     } catch {
-                        Shout 'Access to the path is denied. Cant proseed with desktop.ini file. Skiping...' -color Red
-                        Shout "$($folder.FullName)"
+                        Write-Host 'Access to the path is denied. Cant proseed with desktop.ini file. Skiping...' -ForegroundColor Red
+                        Write-Host "$($folder.FullName)"
                         continue
                     }
                     
@@ -872,7 +915,7 @@ function apply {
                         $desktopINI | Remove-Item -Force
                     } else {
                         if (!($desktopINI)) {
-                            Shout "desktop.ini not found. Proceeding with creation" -color Green
+                            Write-Host "desktop.ini not found. Proceeding with creation" -ForegroundColor Green
                         } else {
                             $found = $false
                             $content = Get-Content -LiteralPath "$($desktopINI.FullName)" -ErrorAction Stop
@@ -883,7 +926,7 @@ function apply {
                                 }
                             }
                             if ($found) {
-                                Shout "desktop.ini already exist. Skipping due to -NoForce flag" -color Yellow
+                                Write-Host "desktop.ini already exist. Skipping due to -NoForce flag" -ForegroundColor Yellow
                                 continue
                             }
                         }
@@ -930,43 +973,43 @@ function apply {
                     
                     Remove-Item -Path "$tmpDir" -Force
                     
-                    Shout "$($Files.Name) --> $($folder.Name)" -color Green
+                    Write-Host "$($Files.Name) --> $($folder.Name)" -ForegroundColor Green
                 } else {
-                    Shout "Proper file not found" -color Red
+                    Write-Host "Proper file not found" -ForegroundColor Red
                     $foldersError += $full_path_folder
                 }
             } else {
-                Shout "Skipping filtered folder: $($folder.FullName)" -color DarkGray -new
+                Write-Host "`nSkipping filtered folder: $($folder.FullName)" -ForegroundColor DarkGray
             }
         }
         
         if ($remove) {
-            Shout "Icons have been removed from folders! Explorer must be restarted!" -color Yellow
-            Shout "Press R to restart" -color Magenta
-            Shout "Press any other key to cancel restart" -color Cyan
+            Write-Host "Icons have been removed from folders! Explorer must be restarted!" -ForegroundColor Yellow
+            Write-Host "Press R to restart" -ForegroundColor Magenta
+            Write-Host "Press any other key to cancel restart" -ForegroundColor Cyan
             $key = [System.Console]::ReadKey($true)
             
             if ($key.Key -eq 'R') {
-                Shout "Restarting Explorer..." -color Yellow
+                Write-Host "Restarting Explorer..." -ForegroundColor Yellow
                 Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
                 Start-Sleep -Seconds 1
                 Start-Process explorer.exe
-                Shout "Explorer restarted." -color Green
+                Write-Host "Explorer restarted." -ForegroundColor Green
             } else {
-                Shout "Operation cancelled." -color DarkGray
+                Write-Host "Operation cancelled." -ForegroundColor DarkGray
             }
         }
         
         if ($foldersError) {
-            Shout "Folders with errors:" -color Red -new
-            Shout "$($foldersError -join "`n")" -color Red
-            Shout "Proper files not found. Try to increase search depth with -search_depth (current $search_depth)" -color Red -new
+            Write-Host "`nFolders with errors:" -ForegroundColor Red
+            Write-Host "$($foldersError -join "`n")" -ForegroundColor Red
+            Write-Host "`nProper files not found. Try to increase search depth with -search_depth (current $search_depth)" -ForegroundColor Red
             $foldersError = @()
         }
-        Shout "------------`n    DONE`n------------" -color Green -new -after
+        Write-Host "`n------------`n    DONE`n------------`n" -ForegroundColor Green
     } catch {
-        Shout "$_" -color Red -new
-        Shout "$($_.ScriptStackTrace)" -color Red -new -after
+        Write-Host "`n$_" -ForegroundColor Red
+        Write-Host "`n$($_.ScriptStackTrace)`n" -ForegroundColor Red
     }
     
     Timer -end
