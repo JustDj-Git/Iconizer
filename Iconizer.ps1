@@ -376,7 +376,7 @@ function Get-IconsByGroup-Pull {
                 Write-Host "Group #$index not found or failed to extract" -ForegroundColor Red
             }
         } else {
-            Write-Host "Total groups extracted: " -NoNewline -ForegroundColor DarkGray
+            Write-Host "`nTotal groups extracted: " -NoNewline -ForegroundColor DarkGray
             Write-Host "$script:totalExtracted" -ForegroundColor Cyan
             Write-Host "Processed groups: " -NoNewline -ForegroundColor DarkGray
             Write-Host "$($script:resourcesNames -join ', ')" -ForegroundColor Cyan
@@ -710,8 +710,8 @@ function pull {
         [Alias('i')]
         [int]$index = 1,
         # depth of search
-        [Alias('dep')]
-        [int]$depth = 0,
+        [Alias('sd')]
+        [int]$search_depth = 0,
         # log path
         [Alias('l')]
         [string]$log,
@@ -719,7 +719,7 @@ function pull {
         [switch]$png,
         # show only info without ext
         [switch]$info,
-        # ext all posible icons in exe (only main by default)
+        # ext all posible icons in exe (main by default)
         [Alias('a')]
         [switch]$all,
         # open GUI for single file (folder by default)
@@ -763,12 +763,12 @@ function pull {
                 if ($file_GUI){
                     $resolved_path = Get-ChildItem -Path $i -Filter '*.exe'
                 } else {
-                    $resolved_path = Get-ChildItem -Path $i -Filter '*.exe' -Recurse -Depth $depth
+                    $resolved_path = Get-ChildItem -Path $i -Filter '*.exe' -Recurse -Depth $search_depth
                 }
                 
                 foreach ($_path in $resolved_path){
                     if ($_path) {
-                        Write-Host "`n--------------`nExtracting icons from:" -ForegroundColor DarkGray
+                        Write-Host "`n--------------`nExtracting icons from:"
                         Write-Host " $($_path.FullName)" -ForegroundColor Green
                         $params = @{
                             FilePath  = $_path.FullName

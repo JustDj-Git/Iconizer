@@ -73,17 +73,18 @@ Extract icons from executable files with various options and formats.
 
  📝 The script accepts the following parameters and switches:
 
-| Parameter    | Alias  | Type     | Description                           | Examples                         |
-|--------------|--------|----------|---------------------------------------|----------------------------------|
-| `-directory` | `-d`   | string[] | Paths to .exe or several directories  | `-d "FIRST_PATH", "SECOND_PATH"` |
-| `-index`     | `-i`   | int      | Icon group index to extract           | `-i 1`                           |
-| `-depth`     | `-dep` | int      | Subdirectory recursion depth          | `-dep 2`                         |
-| `-png`       |        | switch   | Extract largest icon as PNG           |                                  |
-| `-info`      |        | switch   | Show icons info (no extraction)       |                                  |
-| `-all`       | `-a`   | switch   | Extract all icons                     |                                  |
-| `-file`      | `-f`   | switch   | Opens a file selection dialog         |                                  |
-| `-log`       | `-l`   | string   | Enable logging to specified file path | `-l 'C:\'`                       |
-| `-pause`     |        | switch   | To pause script in the end            |                                  |
+| Parameter      | Alias  | Type     | Description                           | Examples                         |
+|----------------|--------|----------|---------------------------------------|----------------------------------|
+| `-directory`   | `-d`   | string[] | Paths to .exe or several directories  | `-d "FIRST_PATH", "SECOND_PATH"` |
+| `-index`       | `-i`   | int      | Icon group index to extract           | `-i 1`                           |
+| `-search_depth`| `-sd`  | int      | Subdirectory recursion depth          | `-sd 2`                          |
+| `-png`         |        | switch   | Extract largest icon as PNG           |                                  |
+| `-info`        |        | switch   | Show icons info (no extraction)       |                                  |
+| `-all`         | `-a`   | switch   | Extract all icons                     |                                  |
+| `-file`        | `-f`   | switch   | Opens a file selection dialog         |                                  |
+| `-log`         | `-l`   | string   | Enable logging to specified file path | `-l 'C:\'`                       |
+| `-pause`       |        | switch   | Pause script in the end               |                                  |
+| `-verbose`     |        | switch   | Show all verbose information          |                                  |
 
 >[!TIP]
 > If **`directory`** is not specified, a system FileDialog will open.
@@ -130,7 +131,8 @@ irm icon.scripts.wiki | iex; pull -d 'C:\app.exe' -info
 | `-apply_depth`  | `-ad`  | int       | Folder processing depth                | `-ad 2`                                   |
 | `-remove`       | `-rm`  | switch    | Remove folder icons                    |                                           |
 | `-log`          | `-l`   | string    | Enable logging to specified path       | `-l 'C:\'`                                |
-| `-pause`        |        | switch    | To pause script in the end             |                                           |
+| `-pause`        |        | switch    | Pause script in the end                |                                           |
+| `-verbose`      |        | switch    | Show all verbose information           |                                           |
 
 >[!TIP]
 > If **`directory`** is not specified, a system FileDialog will open.
