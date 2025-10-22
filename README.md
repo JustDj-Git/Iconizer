@@ -3,7 +3,7 @@
 <p align="center">
   <img src="images/main.png" alt="Iconizer Main Icon"/>
 </p>
-Iconizer is a lightweight PowerShell tool designed to extract icons from .exe files and assigning custom icons files to folders — with zero installation, configuration, or leftover traces.
+Iconizer is a lightweight PowerShell tool designed to extract icons from .exe files and assigning custom icons files to folders with zero installation, configuration, or leftover traces.
 
 The core idea is simplicity and portability: just run the script from anywhere and get immediate results. No dependencies, no setup — just clean PowerShell with c# seasoning and native Windows functionality.
 
@@ -67,10 +67,6 @@ or for both
 irm icon.scripts.wiki | iex; pull; apply
 ```
 
-```powershell
-irm https://raw.githubusercontent.com/JustDj-Git/Iconizer/main/Iconizer.ps1 | iex; pull
-```
-
 ## 🔧 Icon Extraction (`pull`)
 
 Extract icons from executable files with various options and formats.
@@ -85,8 +81,8 @@ Extract icons from executable files with various options and formats.
 | `-png`       |        | switch   | Extract largest icon as PNG           |                                  |
 | `-info`      |        | switch   | Show icons info (no extraction)       |                                  |
 | `-all`       | `-a`   | switch   | Extract all icons                     |                                  |
-| `-folder`    |        | switch   | Opens a folder selection dialog       |                                  |
-| `-log`       | `-l`   | string   | Enable logging to specified file path | `-l 'C:\task_log.txt'`           |
+| `-file`      | `-f`   | switch   | Opens a file selection dialog         |                                  |
+| `-log`       | `-l`   | string   | Enable logging to specified file path | `-l 'C:\'`                       |
 | `-pause`     |        | switch   | To pause script in the end            |                                  |
 
 >[!TIP]
@@ -110,7 +106,7 @@ irm icon.scripts.wiki | iex; pull -d 'C:\Apps\', 'D:\Games\game.exe'
 
 ```powershell
 # Extract all icons as PNG format with logging
-irm icon.scripts.wiki | iex; pull -d 'C:\Apps\' -png -all -log 'C:\extraction.log'
+irm icon.scripts.wiki | iex; pull -d 'C:\Apps\' -png -all -log 'C:\'
 
 # Extract specific icon group with recursive search
 irm icon.scripts.wiki | iex; pull -d 'C:\Programs\' -index 2 -depth 3
@@ -128,13 +124,12 @@ irm icon.scripts.wiki | iex; pull -d 'C:\app.exe' -info
 | `-directory`    | `-d`   | string[]  | Folder paths to process                | -d `'FIRST_PATH', 'SECOND_PATH'`          |
 | `-priority`     | `-p`   | string    | Icon selection priority (`ico`, `exe`) | -p `'exe'`                                |
 | `-filter`       | `-f`   | string[]  | Folder names to exclude                | -f `'FIRST_NAME', 'SECOND_NAME'`          |
-| `-single`       | `-s`   | switch    | Non-recursive folder apply             |                                           |
-| `-rules`        | `-r`   | hashtable | Custom icon applying rules             | `@{"X" = "N.exe"; "Y" = "Z.exe"}`         |
-| `-NoForce`      | `-nf`  | switch    | Skip folders with existing desktop.ini |                                           |
+| `-rules`        | `-r`   | hashtable | Custom icon applying rules             | -r `@{"X" = "N.exe"; "Y" = "Z.exe"}`      |
+| `-noforce`      | `-nf`  | switch    | Skip folders with existing desktop.ini |                                           |
 | `-search_depth` | `-sd`  | int       | Icon file search depth                 | `-sd 2`                                   |
 | `-apply_depth`  | `-ad`  | int       | Folder processing depth                | `-ad 2`                                   |
 | `-remove`       | `-rm`  | switch    | Remove folder icons                    |                                           |
-| `-log`          | `-l`   | string    | Enable logging to specified file path  | `-l 'C:\log.txt'`                         |
+| `-log`          | `-l`   | string    | Enable logging to specified path       | `-l 'C:\'`                                |
 | `-pause`        |        | switch    | To pause script in the end             |                                           |
 
 >[!TIP]
@@ -168,12 +163,12 @@ irm icon.scripts.wiki | iex; apply -d 'D:\Programs' -f 'Backup', 'Temp'
 
 ```powershell
 # Define custom icon applying rules
-$deps = @{
+$rules = @{
     "Visual Studio Code" = "Code.exe"
     "Adobe Photoshop" = "Photoshop.exe"
     "Steam" = "steam.exe"
 }
-irm icon.scripts.wiki | iex; apply -d 'D:\Programs' -r $deps
+irm icon.scripts.wiki | iex; apply -d 'D:\Programs' -r $rules
 ```
 
 #### Icon Removal
@@ -189,21 +184,21 @@ irm icon.scripts.wiki | iex; apply -d 'D:\Programs' -rm
 
 ```powershell
 # Run PowerShell as Administrator for system folders
-# Or exclude protected folders:
-apply -d 'C:\' -filter 'Windows', 'System32', 'Program Files'
+# Or exclude protected folders with filter:
+irm icon.scripts.wiki | iex; apply -d 'C:\' -filter 'Windows', 'System32', 'Program Files'
 ```
 
 ### Icon Extraction Failures
 
 ```powershell
 # Use info mode to check available icons first
-pull -d 'problematic.exe' -info
+irm icon.scripts.wiki | iex; pull -d 'problematic.exe' -info
 
 # Try different icon groups
-pull -d 'app.exe' -index 2
+irm icon.scripts.wiki | iex; pull -d 'app.exe' -index 2
 
 # Try to extract all icons
-pull -d 'app.exe' -all
+irm icon.scripts.wiki | iex; pull -d 'app.exe' -all
 ```
 
 ## ⚡ Important Notes
@@ -211,13 +206,13 @@ pull -d 'app.exe' -all
 ### System Requirements
 
 - Windows PowerShell 5.1 or PowerShell Core 6+
-- .NET Framework (for image processing)
-- Administrative privileges (for some system folders)
+- .NET Framework for image processing
+- Administrative privileges for some system folders
 
 ### File Safety
 
 - Always test on a small folder set first
-- Use `-NoForce` flag to preserve existing customizations
+- Use `-noforce` flag to preserve existing customizations
 
 ### Performance Considerations
 
