@@ -83,7 +83,8 @@ Extract icons from executable files with various options and formats.
 | `-all`       | `-a`   | switch   | Extract all icons                     |                                  |
 | `-file`      | `-f`   | switch   | Opens a file selection dialog         |                                  |
 | `-log`       | `-l`   | string   | Enable logging to specified file path | `-l 'C:\'`                       |
-| `-pause`     |        | switch   | To pause script in the end            |                                  |
+| `-pause`     |        | switch   | Pause script in the end               |                                  |
+| `-verbose`   |        | switch   | Show all verbose information          |                                  |
 
 >[!TIP]
 > If **`directory`** is not specified, a system FileDialog will open.
@@ -130,7 +131,8 @@ irm icon.scripts.wiki | iex; pull -d 'C:\app.exe' -info
 | `-apply_depth`  | `-ad`  | int       | Folder processing depth                | `-ad 2`                                   |
 | `-remove`       | `-rm`  | switch    | Remove folder icons                    |                                           |
 | `-log`          | `-l`   | string    | Enable logging to specified path       | `-l 'C:\'`                                |
-| `-pause`        |        | switch    | To pause script in the end             |                                           |
+| `-pause`        |        | switch    | Pause script in the end                |                                           |
+| `-verbose`      |        | switch    | Show all verbose information           |                                           |
 
 >[!TIP]
 > If **`directory`** is not specified, a system FileDialog will open.
