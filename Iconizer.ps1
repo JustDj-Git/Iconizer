@@ -1,5 +1,3 @@
-$DebugPreference = 'Continue'
-
 function Timer {
     param(
         [switch]$start,
@@ -667,6 +665,40 @@ function Test-ForbiddenFolder {
     return $false
 }
 
+function Logging {
+    [CmdletBinding()]
+    param (
+        [string]$log_path,
+        [switch]$start,
+        [switch]$stop
+    )
+        if ($stop){
+            try {
+                Stop-Transcript
+            }
+            catch {
+                return
+            }
+        }
+        
+        if(!($log_path)){
+            $path = Join-Path -Path $env:LOCALAPPDATA -ChildPath "iconizer.log"
+        } else {
+            if (Test-Path -Path $log_path -PathType Container) {
+                $path = Join-Path -Path $log_path -ChildPath "iconizer.log"
+            } else {
+                Write-Host "Wrong log path. Specify a folder, not a file!" -ForegroundColor Red
+                return
+            }
+        }
+        
+        if ($start){
+            if (Test-Path -Path $path) {
+                Remove-Item -Path $path -Force
+            }
+            Start-Transcript -Path $path
+        }
+}
 
 function pull {
     [CmdletBinding()]
@@ -720,9 +752,7 @@ function pull {
     }
     
     if ($log){
-        $_log_path = Join-Path -Path $directory -ChildPath "iconizer.log"
-        Remove-Item -Path $_log_path -ErrorAction SilentlyContinue
-        Start-Transcript -Path $_log_path
+        Logging -log_path $log -start
     }
     
     $ErrorActionPreference = 'Stop'
@@ -766,7 +796,7 @@ function pull {
     Timer -end
     
     if ($log){
-        Stop-Transcript
+        Logging -stop
     }
     
     if ($pause){
@@ -777,43 +807,47 @@ function pull {
 function apply {
     [CmdletBinding()]
     param (
+        # regular dir path
         [Alias('d')]
         [string[]]$directory,
+        # priority ico or exe
         [Alias('p')]
         [ValidateSet('ico', 'exe')]
         $priority,
+        # filter dirs
         [Alias('f')]
         [string[]]$filter,
-        [Alias('s')]
-        [switch]$single,
-        [Alias('rm')]
-        [switch]$remove,
+        # log path
         [Alias('l')]
         [string]$log,
+        # rules for specific folders
         [Alias('r')]
         $rules,
-        [Alias('nf')]
-        [switch]$NoForce,
-        [switch]$pause,
+        # search depth for icons
         [Alias('sd')]
         [int]$search_depth = 0,
+        # depth of application
         [Alias('ad')]
-        [int]$apply_depth = 0
+        [int]$apply_depth = 0,
+        # remove desktop.ini
+        [Alias('rm')]
+        [switch]$remove,
+        # DO NOT overwrite existing desktop.ini
+        [Alias('nf')]
+        [switch]$noforce,
+        # pause after
+        [switch]$pause
     )
     
-    if (!($directory)) {
-        $directory = SelectPath
-    }
+    if (!($directory)) { $directory = SelectPath }
     
     if (!($directory)) {
-        Write-Host "`nNo path was selected by the user. Select the path in the GUI or specify it like -d 'full_path_to_files'`n" -ForegroundColor Red
+        Write-Host "`nNo path was selected by the user. Select the path in the GUI or specify it like -d 'full_path_to_dir'`n" -ForegroundColor Red
         return
     }
     
     if ($log){
-        $_log_path = Join-Path -Path $directory -ChildPath "iconizer.log"
-        Remove-Item -Path $_log_path -ErrorAction SilentlyContinue
-        Start-Transcript -Path $_log_path
+        Logging -log_path $log -start
     }
     
     $ErrorActionPreference = 'Stop'
@@ -821,21 +855,15 @@ function apply {
     try {
         $foldersError = @()
         $folders = @()
-        Write-Host "`nLet's start applying icons to folders" -ForegroundColor Green
-        Write-Host "-----------------"
+        
         Timer -start
         
         [string[]]$Filter_main += $filter
         [string[]]$Filter_main += '*DeliveryOptimization*', "$env:Programfiles", "${env:ProgramFiles(x86)}", "$env:windir", '*OneCommander*', '*$RECYCLE.BIN*', '*System Volume Information*'
         
-        if (($directory.Count -ge 1) -and (-not $single)) {
-            $single = $true
-            Write-Host "Processing specified folders directly." -ForegroundColor Yellow
-        }
-        
         foreach ($i in $directory) {
             if (Test-Path -Path "$i") {
-$fullPath = (Resolve-Path -LiteralPath "$i").Path
+                $fullPath = (Resolve-Path -LiteralPath "$i").Path
                 if ($VerbosePreference -ne 'SilentlyContinue') { Write-Host "Adding: $fullPath" }
                 if ($apply_depth -eq 0) {
                     $folders += Get-Item -LiteralPath "$i" -ErrorAction SilentlyContinue
@@ -856,25 +884,20 @@ $fullPath = (Resolve-Path -LiteralPath "$i").Path
         }
         
         if ($filter) {
-            Write-Host "`nYour filter list:" -ForegroundColor Yellow
-            Write-Host "-----------------"
-            foreach ($i in $filter){ Write-Host "$i" -ForegroundColor Yellow }
+            Write-Host "`nYour filter list:" -ForegroundColor DarkGray
+            foreach ($i in $filter){ Write-Host " $i" -ForegroundColor Yellow }
         }
         
-        Write-Host "`nProcessing folders:" -ForegroundColor Cyan
-        Write-Host "$($folders -join "`n")" -ForegroundColor DarkBlue
+        Write-Host "`nProcessing folders:" -ForegroundColor DarkGray
+        $folders | ForEach-Object { Write-Host " $($_.FullName)" -ForegroundColor DarkBlue }
         
         $primaryType = if ($priority -eq 'ico') { 'ico' } else { 'exe' }
         $secondaryType = if ($priority -eq 'ico') { 'exe' } else { 'ico' }
-        Write-Host "`nPriority '$primaryType'"
+        if (!($remove)){ Write-Host "`nPriority to $primaryType" }
         foreach ($folder in $folders) {
             if ($remove) {
                 try {
-                    if ($single) {
-                        $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -ErrorAction SilentlyContinue
-                    } else {
-                        $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -Recurse -Depth 1 -ErrorAction SilentlyContinue
-                    }
+                    $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -Recurse:$($apply_depth -gt 0) -Depth $apply_depth -ErrorAction SilentlyContinue
                     $desktopINI | Remove-Item -Force
                 } catch {
                     Write-Host 'Access to the path is denied. Cant proseed with desktop.ini file. Skiping...' -ForegroundColor Red
@@ -887,7 +910,8 @@ $fullPath = (Resolve-Path -LiteralPath "$i").Path
             $shouldSkip = Test-ForbiddenFolder -Path $folder.FullName -ForbiddenFolders $Filter_main
             
             if (-not $shouldSkip) {
-                Write-Host "`nProcessing folder: `'$($folder.FullName)`'" -ForegroundColor Cyan
+                Write-Host "`nProcessing folder: " -NoNewline -ForegroundColor DarkGray
+                Write-Host "$($folder.FullName)" -ForegroundColor Cyan
                 $Files = ''
                 $folder.Attributes = 'Directory', 'ReadOnly'
                 [string]$full_path_folder = $folder.FullName
@@ -911,18 +935,14 @@ $fullPath = (Resolve-Path -LiteralPath "$i").Path
                 if ($Files) {
                     #Testing path
                     try {
-                        if ($single) {
-                            $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -ErrorAction SilentlyContinue
-                        } else {
-                            $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -Recurse -Depth 1 -ErrorAction SilentlyContinue
-                        }
+                        $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -Recurse:$($apply_depth -gt 0) -Depth $apply_depth -ErrorAction SilentlyContinue
                     } catch {
                         Write-Host 'Access to the path is denied. Cant proseed with desktop.ini file. Skiping...' -ForegroundColor Red
                         Write-Host "$($folder.FullName)"
                         continue
                     }
                     
-                    if (!($NoForce)){
+                    if (!($noforce)){
                         #Forcing desktop.ini deletion
                         $desktopINI | Remove-Item -Force
                     } else {
@@ -938,7 +958,7 @@ $fullPath = (Resolve-Path -LiteralPath "$i").Path
                                 }
                             }
                             if ($found) {
-                                Write-Host "desktop.ini already exist. Skipping due to -NoForce flag" -ForegroundColor Yellow
+                                Write-Host "desktop.ini already exist. Skipping due to -noforce flag" -ForegroundColor Yellow
                                 continue
                             }
                         }
@@ -985,46 +1005,50 @@ $fullPath = (Resolve-Path -LiteralPath "$i").Path
                     
                     Remove-Item -Path "$tmpDir" -Force
                     
-                    Write-Host "$($Files.Name) --> $($folder.Name)" -ForegroundColor Green
+                    Write-Host "$($Files.Name) " -NoNewline -ForegroundColor DarkGray
+                    Write-Host "--> " -NoNewline
+                    Write-Host "$($folder.Name)" -ForegroundColor Green
                 } else {
                     Write-Host "Proper file not found" -ForegroundColor Red
                     $foldersError += $full_path_folder
                 }
             } else {
-                Write-Host "`nSkipping filtered folder: $($folder.FullName)" -ForegroundColor DarkGray
+                Write-Host "`nSkipping filtered folder: " -NoNewline -ForegroundColor DarkGray
+                Write-Host "$($folder.FullName)" -ForegroundColor Cyan
             }
         }
         
         if ($remove) {
-            Write-Host "Icons have been removed from folders! Explorer must be restarted!" -ForegroundColor Yellow
-            Write-Host "Press R to restart" -ForegroundColor Magenta
-            Write-Host "Press any other key to cancel restart" -ForegroundColor Cyan
+            Write-Host "`nIcons have been removed from folders! In most cases, Explorer must be restarted!" -ForegroundColor Yellow
+            Write-Host "Press " -NoNewline; Write-Host "R " -NoNewline -ForegroundColor Magenta; Write-Host "to restart"
+            Write-Host "Press any other key to cancel"
             $key = [System.Console]::ReadKey($true)
-            
             if ($key.Key -eq 'R') {
                 Write-Host "Restarting Explorer..." -ForegroundColor Yellow
-                Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
+                Stop-Process -Name explorer -ErrorAction Stop
                 Start-Sleep -Seconds 1
-                Start-Process explorer.exe
+                cmd /c "start /b explorer.exe"
                 Write-Host "Explorer restarted." -ForegroundColor Green
-            } else {
-                Write-Host "Operation cancelled." -ForegroundColor DarkGray
             }
         }
         
         if ($foldersError) {
             Write-Host "`nFolders with errors:" -ForegroundColor Red
             Write-Host "$($foldersError -join "`n")" -ForegroundColor Red
-            Write-Host "`nProper files not found. Try to increase search depth with -search_depth (current $search_depth)" -ForegroundColor Red
+            Write-Host "`nProper files not found. Try to increase search depth with -sd (-search_depth). Current value: " -NoNewline -ForegroundColor Red; Write-Host "$search_depth" -ForegroundColor Cyan
+            Write-Host "You can use the -nf flag if you're happy with the results from the previous run - it won't overwrite the existing folder view"
             $foldersError = @()
         }
-        Write-Host "`n------------`n    DONE`n------------`n" -ForegroundColor Green
     } catch {
         Write-Host "`n$_" -ForegroundColor Red
         Write-Host "`n$($_.ScriptStackTrace)`n" -ForegroundColor Red
     }
     
     Timer -end
+    
+    if ($log){
+        Logging -stop
+    }
     
     if ($pause){
         pause
