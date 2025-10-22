@@ -504,6 +504,7 @@ function Convert-IconToPNG {
 }
 
 function Find-Candidates {
+    [CmdletBinding()]
     param (
         [parameter(Mandatory = $true)]
         [string]$path,
@@ -525,8 +526,9 @@ function Find-Candidates {
     $name_folder = $name_folder -replace $pattern_regex, '' -replace "$pattern_regex_digits", '' -replace "$pattern_regex_symbols", ''
     
     if ($allFiles) {
-        if ($log) {
-            Write-Host "Found: $allFiles" -ForegroundColor DarkGray
+        if ($VerbosePreference -ne 'SilentlyContinue') {
+            Write-Host "Found: " -ForegroundColor DarkGray
+            Write-Host "$($allFiles -join "`n")" -ForegroundColor DarkGray
         }
         
         $candidates = @()
@@ -563,7 +565,9 @@ function Find-Candidates {
             
             if ($priority -and $file.Extension.ToLower() -eq ".$priority") {
                 $score += 400
-                Write-Host "Priority bonus applied to: `'$($file.Name)`'" -ForegroundColor Cyan
+                if ($VerbosePreference -ne 'SilentlyContinue'){
+                    Write-Host "Priority bonus applied to: $($file.Name)"
+                }
             }
             
             if ($score -gt 0) {
@@ -574,7 +578,7 @@ function Find-Candidates {
                     Score = $score
                     Name  = $FileName
                 }
-                if ($log){
+                if ($VerbosePreference -ne 'SilentlyContinue'){
                     Write-Host "Candidate: $($file.Name) | Score: $score" -ForegroundColor DarkGray
                 }
             }
@@ -583,20 +587,25 @@ function Find-Candidates {
         if ($candidates.Count -gt 0) {
             $bestCandidate = $candidates | Sort-Object Score -Descending | Select-Object -First 1
             $Files = $bestCandidate.File
-            if ($log) {
-                Write-Host "Best candidate: $($Files.Name) with score $($bestCandidate.Score)" -ForegroundColor DarkGray
+
+            if ($VerbosePreference -ne 'SilentlyContinue') {
+                Write-Host "Best candidate: " -NoNewline -ForegroundColor DarkGray
+                Write-Host "$($Files.Name) " -NoNewline -ForegroundColor Cyan
+                Write-Host "with score " -NoNewline -ForegroundColor DarkGray
+                Write-Host "$($bestCandidate.Score)" -ForegroundColor Cyan
             }
         } else {
             $Files = $allFiles | Select-Object -First 1
             Write-Host "No matches found, using first exe: `'$($Files.Name)`'" -ForegroundColor Yellow
         }
     } else {
-        Write-Host ".$priority candidates not found" -ForegroundColor Red
+        if ($VerbosePreference -ne 'SilentlyContinue') { Write-Host ".$priority candidates not found" }
     }
     return $Files
 }
 
 function Test-ForbiddenFolder {
+    [CmdletBinding()]
     param (
         [string]$Path,
         [string[]]$ForbiddenFolders
@@ -614,7 +623,7 @@ function Test-ForbiddenFolder {
         # Check for full path (starts with drive or UNC)
         if ($forbidden -match '^[a-zA-Z]:\\' -or $forbidden.StartsWith('\\')) {
             if ($normalizedPath -like "$forbidden*") {
-                Write-Debug "DEBUG: Path '$normalizedPath' blocked by full path filter '$forbidden'"
+                if ($VerbosePreference -ne 'SilentlyContinue') { Write-Host "Path '$normalizedPath' blocked by full path filter '$forbidden'" }
                 return $true
             }
         }
@@ -624,7 +633,7 @@ function Test-ForbiddenFolder {
             if ($forbidden.StartsWith('*') -and $forbidden.EndsWith('*')) {
                 $pattern = $forbidden.Trim('*')
                 if ($normalizedPath -like "*$pattern*") {
-                    Write-Debug "DEBUG: Path '$normalizedPath' blocked by wildcard filter '$forbidden' (anywhere in path)"
+                    if ($VerbosePreference -ne 'SilentlyContinue') { Write-Host "Path '$normalizedPath' blocked by wildcard filter '$forbidden' (anywhere in path)" }
                     return $true
                 }
             }
@@ -633,14 +642,14 @@ function Test-ForbiddenFolder {
                 $pattern = $forbidden.TrimStart('*')
                 $lastFolder = Split-Path -Leaf $normalizedPath
                 if ($lastFolder -like "*$pattern") {
-                    Write-Debug "DEBUG: Path '$normalizedPath' blocked by end-pattern filter '$forbidden' (last folder: '$lastFolder')"
+                    if ($VerbosePreference -ne 'SilentlyContinue') { Write-Host "Path '$normalizedPath' blocked by end-pattern filter '$forbidden' (last folder: '$lastFolder')" }
                     return $true
                 }
             }
             # pattern* - regular wildcard
             else {
                 if ($normalizedPath -like "*$forbidden*") {
-                    Write-Debug "DEBUG: Path '$normalizedPath' blocked by wildcard filter '$forbidden'"
+                    if ($VerbosePreference -ne 'SilentlyContinue') { Write-Host "Path '$normalizedPath' blocked by wildcard filter '$forbidden'" }
                     return $true
                 }
             }
@@ -649,7 +658,7 @@ function Test-ForbiddenFolder {
         else {
             $lastFolder = Split-Path -Leaf $normalizedPath
             if ($lastFolder -eq $forbidden) {
-                Write-Debug "DEBUG: Path '$normalizedPath' blocked by exact match filter '$forbidden' (last folder: '$lastFolder')"
+                if ($VerbosePreference -ne 'SilentlyContinue') { Write-Host "Path '$normalizedPath' blocked by exact match filter '$forbidden' (last folder: '$lastFolder')" }
                 return $true
             }
         }
@@ -825,18 +834,21 @@ function apply {
         }
         
         foreach ($i in $directory) {
-            if (Test-Path -Path $i) {
-                Write-Host "Selected folder: $i" -ForegroundColor Green
-                if ($single) {
+            if (Test-Path -Path "$i") {
+$fullPath = (Resolve-Path -LiteralPath "$i").Path
+                if ($VerbosePreference -ne 'SilentlyContinue') { Write-Host "Adding: $fullPath" }
+                if ($apply_depth -eq 0) {
                     $folders += Get-Item -LiteralPath "$i" -ErrorAction SilentlyContinue
                 } else {
-                    $folders += Get-ChildItem -LiteralPath "$i" -Directory -Depth $apply_depth -ErrorAction SilentlyContinue
+                    $folders += Get-ChildItem -LiteralPath "$i" -Directory -Depth $($apply_depth - 1) -ErrorAction SilentlyContinue
                 }
             } else {
                 Write-Host "Folder `'$i`' does not exist" -ForegroundColor Red
                 continue
             }
         }
+        
+        $folders = $folders | Sort-Object FullName -Unique
         
         if ($folders.Count -eq 0) {
             Write-Host "Folders not found or inaccessible" -ForegroundColor Red
@@ -892,7 +904,7 @@ function apply {
                 }
                 
                 if (-not $Files) {
-                    Write-Host "$primaryType files not found, switching to $secondaryType search" -ForegroundColor Yellow
+                    if ($VerbosePreference -ne 'SilentlyContinue') { Write-Host "$primaryType files not found, switching to $secondaryType search" }
                     $Files = Find-Candidates -path $full_path_folder -search_depth $search_depth -priority $secondaryType
                 }
                 
