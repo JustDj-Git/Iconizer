@@ -286,14 +286,14 @@ function Get-IconsByGroup-Pull {
                             $icoPath = Join-Path $OutputDir "$ICO_name.ico"
                         }
                         
-                        $icoData = @()
+                        $icoData = [System.Collections.Generic.List[byte]]::new()
                         
                         # ICO file header
-                        $icoData += @(0, 0)  # Reserved
-                        $icoData += @(1, 0)  # Type (1 = ICO)
-                        $icoData += [BitConverter]::GetBytes([uint16]$iconCount)  # Count
+                        $icoData.AddRange([byte[]]@(0, 0))  # Reserved
+                        $icoData.AddRange([byte[]]@(1, 0))  # Type (1 = ICO)
+                        $icoData.AddRange([BitConverter]::GetBytes([uint16]$iconCount))  # Count
                         
-                        $iconDataArray = @()
+                        $iconDataList = [System.Collections.Generic.List[byte[]]]::new()
                         $currentOffset = 6 + ($iconCount * 16)  # Header + directory
                         
                         # Process each icon in group
@@ -339,13 +339,13 @@ function Get-IconsByGroup-Pull {
                                             }
                                             
                                             # Add icon directory to ICO file
-                                            $icoData += @($width, $height, $colorCount, $reserved2)
-                                            $icoData += [BitConverter]::GetBytes($planes)
-                                            $icoData += [BitConverter]::GetBytes($bitCount)
-                                            $icoData += [BitConverter]::GetBytes([uint32]$iconSize)
-                                            $icoData += [BitConverter]::GetBytes([uint32]$currentOffset)
+                                            $icoData.AddRange([byte[]]@($width, $height, $colorCount, $reserved2))
+                                            $icoData.AddRange([BitConverter]::GetBytes($planes))
+                                            $icoData.AddRange([BitConverter]::GetBytes($bitCount))
+                                            $icoData.AddRange([BitConverter]::GetBytes([uint32]$iconSize))
+                                            $icoData.AddRange([BitConverter]::GetBytes([uint32]$currentOffset))
                                             
-                                            $iconDataArray += ,$iconBytes
+                                            $iconDataList.Add($iconBytes)
                                             $currentOffset += $iconSize
                                             if ($bitCount -eq 0) { $bitCount = 32 }
                                             if ($width -eq 0) { $width = 256 }
@@ -358,14 +358,14 @@ function Get-IconsByGroup-Pull {
                         }
                         
                         # Write ICO file
-                        if ($iconDataArray.Count -gt 0) {
+                        if ($iconDataList.Count -gt 0) {
                             if (!($info) -and !($png)){
-                                $allData = @()
-                                $allData += $icoData
-                                foreach ($iconBytes in $iconDataArray) {
-                                    $allData += $iconBytes
+                                $allData = [System.Collections.Generic.List[byte]]::new()
+                                $allData.AddRange($icoData)
+                                foreach ($iconBytes in $iconDataList) {
+                                    $allData.AddRange($iconBytes)
                                 }
-                                [System.IO.File]::WriteAllBytes($icoPath, $allData)
+                                [System.IO.File]::WriteAllBytes($icoPath, $allData.ToArray())
                                 Write-Host "Saved: " -NoNewline -ForegroundColor DarkGray
                                 Write-Host "$icoPath" -ForegroundColor Green
                             }
