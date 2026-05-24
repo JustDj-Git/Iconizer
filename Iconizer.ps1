@@ -1066,10 +1066,20 @@ function apply {
                     $first_part = ''
                     
                     if (($Files.DirectoryName -ne $full_path_folder)) {
-                        $exe_array = ($Files.DirectoryName).Split('\')
-                        $folder_array = ($full_path_folder).Split('\')
-                        $diff = (Compare-Object -ReferenceObject $exe_array -DifferenceObject $folder_array).InputObject
-                        foreach ($k in $diff) {
+                        $fileDirParts = $Files.DirectoryName.Split('\')
+                        $folderParts = $full_path_folder.Split('\')
+                        
+                        $commonPrefixLen = 0
+                        for ($j = 0; $j -lt [Math]::Min($fileDirParts.Length, $folderParts.Length); $j++) {
+                            if ($fileDirParts[$j] -eq $folderParts[$j]) {
+                                $commonPrefixLen++
+                            } else {
+                                break
+                            }
+                        }
+                        
+                        $relativeParts = $fileDirParts[($commonPrefixLen)..($fileDirParts.Length - 1)]
+                        foreach ($k in $relativeParts) {
                             $first_part = $first_part + '\' + $k
                         }
                     }
