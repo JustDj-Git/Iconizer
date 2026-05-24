@@ -568,7 +568,7 @@ function Find-Candidates {
     $folder = Get-Item -LiteralPath $path
     [string]$full_path_folder = $folder.FullName
     
-    if ($cachedFiles -ne $null) {
+    if ($null -ne $cachedFiles) {
         $allFiles = $cachedFiles
     } else {
         $iconsFilesList = Get-ChildItem -LiteralPath "$full_path_folder" -Recurse -Filter "*.ico" -Depth $search_depth -File
@@ -832,7 +832,7 @@ function pull {
     try {
         foreach ($i in $directory) {
             $counter++
-            Write-Host "`n($counter/$($directory.Count)) processing:" -ForegroundColor DarkGray
+            Write-Host "`n($counter/$(@($directory)).Count) processing:" -ForegroundColor DarkGray
             Write-Host "$($i)" -ForegroundColor DarkBlue
             
             if (Test-Path -LiteralPath $i){
@@ -1033,7 +1033,7 @@ function apply {
                 if ($Files) {
                     #Testing path
                     try {
-                        $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -Recurse:$($apply_depth -gt 0) -Depth $apply_depth -ErrorAction SilentlyContinue
+                        $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -ErrorAction SilentlyContinue
                     } catch {
                         Write-Host 'Access to the path is denied. Can''t proceed with desktop.ini file. Skipping...' -ForegroundColor Red
                         Write-Host "$($folder.FullName)"
@@ -1048,7 +1048,8 @@ function apply {
                             Write-Host "desktop.ini not found. Proceeding with creation" -ForegroundColor Green
                         } else {
                             $found = $false
-                            $content = Get-Content -LiteralPath "$($desktopINI.FullName)" -ErrorAction Stop
+                            $iniFile = @($desktopINI)[0]
+                            $content = Get-Content -LiteralPath $iniFile.FullName -ErrorAction Stop
                             foreach ($line in $content) {
                                 if ($line -match '^IconResource=') {
                                     $found = $true
