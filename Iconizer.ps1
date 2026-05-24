@@ -1101,9 +1101,10 @@ function apply {
                         '[ViewState]'
                         'Mode='
                         'Vid='
-                        'FolderType=Generic') -join "`n"
+                        'FolderType=Generic') -join "`r`n"
                     
-                    $null = New-Item -Path "$tmp" -Value $ini
+                    $null = New-Item -Path "$tmp" -ItemType File -Force
+                    [System.IO.File]::WriteAllText($tmp, $ini, [System.Text.Encoding]::Unicode)
                     
                     (Get-Item -LiteralPath $tmp).Attributes = 'Archive, System, Hidden'
                     
