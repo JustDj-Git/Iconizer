@@ -60,7 +60,7 @@ function SelectPath {
     
     if ($file){
         return $file
-    } elseif ($directory){
+    } elseif ($directory) {
         return $directory
     } else {
         return $null
@@ -846,7 +846,7 @@ function pull {
                         continue
                     }
                 } else {
-                    if (($file_from_GUI) -or ($search_depth -eq 0)) {
+                    if ($search_depth -eq 0) {
                         $resolved_path = Get-ChildItem -LiteralPath $i -Filter '*.exe'
                     } else {
                         $resolved_path = Get-ChildItem -LiteralPath $i -Filter '*.exe' -Recurse -Depth $search_depth
@@ -876,7 +876,7 @@ function pull {
                 } #foreach
                 Write-Host "---------------------" -ForegroundColor Green
             } else {
-                Write-Host "Path do not exist: $i" -ForegroundColor Red
+                Write-Host "Path does not exist: $i" -ForegroundColor Red
             }
         } #foreach
     } catch {
@@ -988,7 +988,7 @@ function apply {
                     $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -Recurse:$($apply_depth -gt 0) -Depth $apply_depth -ErrorAction SilentlyContinue
                     $desktopINI | Remove-Item -Force
                 } catch {
-                    Write-Host 'Access to the path is denied. Cant proseed with desktop.ini file. Skiping...' -ForegroundColor Red
+                    Write-Host 'Access to the path is denied. Can''t proceed with desktop.ini file. Skipping...' -ForegroundColor Red
                     Write-Host "$($folder.FullName)"
                     continue
                 }
@@ -1035,7 +1035,7 @@ function apply {
                     try {
                         $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -Recurse:$($apply_depth -gt 0) -Depth $apply_depth -ErrorAction SilentlyContinue
                     } catch {
-                        Write-Host 'Access to the path is denied. Cant proseed with desktop.ini file. Skiping...' -ForegroundColor Red
+                        Write-Host 'Access to the path is denied. Can''t proceed with desktop.ini file. Skipping...' -ForegroundColor Red
                         Write-Host "$($folder.FullName)"
                         continue
                     }
