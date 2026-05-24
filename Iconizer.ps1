@@ -826,13 +826,14 @@ function pull {
     $ErrorActionPreference = 'Stop'
     
     Timer -start
+    $dirCount = @($directory).Count
     Write-Host "`nList:`n---------------" -ForegroundColor DarkGray
     $directory | ForEach-Object { Write-Host " $($_)" -ForegroundColor DarkBlue }
     $counter = 0
     try {
         foreach ($i in $directory) {
             $counter++
-            Write-Host "`n($counter/$(@($directory)).Count) processing:" -ForegroundColor DarkGray
+            Write-Host "`n($counter/$dirCount) processing:" -ForegroundColor DarkGray
             Write-Host "$($i)" -ForegroundColor DarkBlue
             
             if (Test-Path -LiteralPath $i){
