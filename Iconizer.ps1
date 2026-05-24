@@ -822,6 +822,7 @@ function pull {
         Logging -log_path $log -start
     }
     
+    $oldErrorAction = $ErrorActionPreference
     $ErrorActionPreference = 'Stop'
     
     Timer -start
@@ -882,6 +883,7 @@ function pull {
         Write-Host "`nError:$_" -ForegroundColor Red
         Write-Host "`n$($_.ScriptStackTrace)`n" -ForegroundColor Red
     } finally {
+        $ErrorActionPreference = $oldErrorAction
         Timer -end
         if ($log){ Logging -stop }
         if ($pause){ pause }
@@ -935,6 +937,7 @@ function apply {
         Logging -log_path $log -start
     }
     
+    $oldErrorAction = $ErrorActionPreference
     $ErrorActionPreference = 'Stop'
     
     try {
@@ -1141,6 +1144,7 @@ function apply {
         Write-Host "`n$_" -ForegroundColor Red
         Write-Host "`n$($_.ScriptStackTrace)`n" -ForegroundColor Red
     } finally {
+        $ErrorActionPreference = $oldErrorAction
         Timer -end
         if ($log){ Logging -stop }
         if ($pause){ pause }
