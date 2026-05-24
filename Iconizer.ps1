@@ -29,30 +29,34 @@ function SelectPath {
     $Topmost.TopMost = $True
     $Topmost.MinimizeBox = $True
     
-    if ($files){
-        $OpenFileDialog = New-Object -TypeName System.Windows.Forms.OpenFileDialog
-        $OpenFileDialog.RestoreDirectory = $True
-        $OpenFileDialog.Title = 'Select an EXE File'
-        $OpenFileDialog.Filter = 'Executable files (*.exe)|*.exe'
-        if (($OpenFileDialog.ShowDialog($Topmost) -eq 'OK')) {
-            $file = $OpenFileDialog.FileName
-        } else {
-            $file = $null
-        }
-    } else {
-        $OpenFolderDialog = New-Object -TypeName System.Windows.Forms.FolderBrowserDialog
-        $OpenFolderDialog.Description = 'Select a folder'
-        $OpenFolderDialog.Rootfolder = 'MyComputer'
-        $OpenFolderDialog.ShowNewFolderButton = $false
-        if ($OpenFolderDialog.ShowDialog($Topmost) -eq 'OK') {
-            $directory = $OpenFolderDialog.SelectedPath
-        } else {
-            $directory = $null
-        }
-    }
+    $file = $null
+    $directory = $null
+    $OpenFileDialog = $null
+    $OpenFolderDialog = $null
     
-    $Topmost.Close()
-    $Topmost.Dispose()
+    try {
+        if ($files){
+            $OpenFileDialog = New-Object -TypeName System.Windows.Forms.OpenFileDialog
+            $OpenFileDialog.RestoreDirectory = $True
+            $OpenFileDialog.Title = 'Select an EXE File'
+            $OpenFileDialog.Filter = 'Executable files (*.exe)|*.exe'
+            if (($OpenFileDialog.ShowDialog($Topmost) -eq 'OK')) {
+                $file = $OpenFileDialog.FileName
+            }
+        } else {
+            $OpenFolderDialog = New-Object -TypeName System.Windows.Forms.FolderBrowserDialog
+            $OpenFolderDialog.Description = 'Select a folder'
+            $OpenFolderDialog.Rootfolder = 'MyComputer'
+            $OpenFolderDialog.ShowNewFolderButton = $false
+            if ($OpenFolderDialog.ShowDialog($Topmost) -eq 'OK') {
+                $directory = $OpenFolderDialog.SelectedPath
+            }
+        }
+    } finally {
+        if ($OpenFileDialog) { $OpenFileDialog.Dispose() }
+        if ($OpenFolderDialog) { $OpenFolderDialog.Dispose() }
+        $Topmost.Dispose()
+    }
     
     if ($file){
         return $file
