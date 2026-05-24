@@ -808,19 +808,14 @@ function pull {
     if (!($directory)) {
         if ($file_sw){
             $directory = SelectPath -files
-            $file_from_GUI = $true
         } else {
             $directory = SelectPath
         }
         
-        if ($directory){
-            $from_GUI = $true
+        if (!($directory)) {
+            Write-Host "`nNo path was selected by the user. Select the path in the GUI or specify it like -d 'full_path_to_files'`n" -ForegroundColor Red
+            return
         }
-    }
-    
-    if (!($directory)) {
-        Write-Host "`nNo path was selected by the user. Select the path in the GUI or specify it like -d 'full_path_to_files'`n" -ForegroundColor Red
-        return
     }
     
     if ($log){
