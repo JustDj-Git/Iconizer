@@ -659,6 +659,100 @@ function Find-Candidates {
     return $Files
 }
 
+function Get-RelativePath {
+    param(
+        [string]$FromFile,
+        [string]$ToFolder
+    )
+    
+    if ($FromFile -eq $ToFolder) { return '' }
+    
+    $fileParts = $FromFile.Split('\')
+    $folderParts = $ToFolder.Split('\')
+    
+    $commonLen = 0
+    for ($j = 0; $j -lt [Math]::Min($fileParts.Length, $folderParts.Length); $j++) {
+        if ($fileParts[$j] -eq $folderParts[$j]) {
+            $commonLen++
+        } else {
+            break
+        }
+    }
+    
+    $relativeParts = $fileParts[($commonLen)..($fileParts.Length - 1)]
+    $relativePath = ''
+    foreach ($part in $relativeParts) {
+        $relativePath = $relativePath + '\' + $part
+    }
+    
+    return $relativePath
+}
+
+function Set-FolderIcon {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$FolderPath,
+        [Parameter(Mandatory=$true)]
+        $IconFile
+    )
+    
+    $iconDir = $IconFile.DirectoryName
+    $relativePath = Get-RelativePath -FromFile $iconDir -ToFolder $FolderPath
+    
+    if ($relativePath) {
+        $value = '.' + "$relativePath\$IconFile" + ',0'
+    } else {
+        $value = '.\' + $IconFile + ',0'
+    }
+    
+    $ini = @(
+        '[.ShellClassInfo]'
+        "IconResource=$value"
+        '[ViewState]'
+        'Mode='
+        'Vid='
+        'FolderType=Generic') -join "`r`n"
+    
+    $tmpDir = (Join-Path -Path "$env:TEMP" -ChildPath ([IO.Path]::GetRandomFileName()))
+    $null = mkdir -Path $tmpDir -Force
+    $tmp = "$tmpDir\desktop.ini"
+    
+    $null = New-Item -Path "$tmp" -ItemType File -Force
+    [System.IO.File]::WriteAllText($tmp, $ini, [System.Text.Encoding]::Unicode)
+    
+    (Get-Item -LiteralPath $tmp).Attributes = 'Archive, System, Hidden'
+    
+    $shell = New-Object -ComObject Shell.Application
+    $namespace = $shell.NameSpace($FolderPath)
+    $namespace.MoveHere($tmp, 0x0004 + 0x0010 + 0x0400)
+    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($namespace) | Out-Null
+    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($shell) | Out-Null
+    $namespace = $null
+    $shell = $null
+    
+    Remove-Item -Path "$tmpDir" -Force
+}
+
+function Remove-FolderIcon {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$FolderPath,
+        [int]$Depth = 0
+    )
+    
+    try {
+        $desktopINI = Get-ChildItem -LiteralPath $FolderPath -Filter "desktop.ini" -Hidden -Recurse:$($Depth -gt 0) -Depth $Depth -ErrorAction SilentlyContinue
+        $desktopINI | Remove-Item -Force
+    } catch {
+        Write-Host 'Access to the path is denied. Can''t proceed with desktop.ini file. Skipping...' -ForegroundColor Red
+        Write-Host "$FolderPath"
+        return $false
+    }
+    return $true
+}
+
 function Test-ForbiddenFolder {
     [CmdletBinding()]
     param (
@@ -985,14 +1079,8 @@ function apply {
         if (!($remove)){ Write-Host "`nPriority to $primaryType" }
         foreach ($folder in $folders) {
             if ($remove) {
-                try {
-                    $desktopINI = Get-ChildItem -LiteralPath "$($folder.FullName)" -Filter "desktop.ini" -Hidden -Recurse:$($apply_depth -gt 0) -Depth $apply_depth -ErrorAction SilentlyContinue
-                    $desktopINI | Remove-Item -Force
-                } catch {
-                    Write-Host 'Access to the path is denied. Can''t proceed with desktop.ini file. Skipping...' -ForegroundColor Red
-                    Write-Host "$($folder.FullName)"
-                    continue
-                }
+                $result = Remove-FolderIcon -FolderPath $folder.FullName -Depth $apply_depth
+                if (-not $result) { continue }
                 continue
             }
             
@@ -1064,62 +1152,9 @@ function apply {
                         }
                     }
                     
-                #### Creating desktop.ini file starts
-                    $first_part = ''
+                #### Creating desktop.ini file
+                    Set-FolderIcon -FolderPath $full_path_folder -IconFile $Files
                     
-                    if (($Files.DirectoryName -ne $full_path_folder)) {
-                        $fileDirParts = $Files.DirectoryName.Split('\')
-                        $folderParts = $full_path_folder.Split('\')
-                        
-                        $commonPrefixLen = 0
-                        for ($j = 0; $j -lt [Math]::Min($fileDirParts.Length, $folderParts.Length); $j++) {
-                            if ($fileDirParts[$j] -eq $folderParts[$j]) {
-                                $commonPrefixLen++
-                            } else {
-                                break
-                            }
-                        }
-                        
-                        $relativeParts = $fileDirParts[($commonPrefixLen)..($fileDirParts.Length - 1)]
-                        foreach ($k in $relativeParts) {
-                            $first_part = $first_part + '\' + $k
-                        }
-                    }
-                    
-                    $tmpDir = (Join-Path -Path "$env:TEMP" -ChildPath ([IO.Path]::GetRandomFileName()))
-                    $null = mkdir -Path $tmpDir -Force
-                    $tmp = "$tmpDir\desktop.ini"
-                    
-                    if ($first_part) {
-                        $value = '.' + "$first_part\$Files" + ',0'
-                    } else {
-                        $value = '.\' + $Files + ',0'
-                    }
-                    
-                    $ini = @(
-                        '[.ShellClassInfo]'
-                        "IconResource=$value"
-                        #"InfoTip=$exeFiles"
-                        '[ViewState]'
-                        'Mode='
-                        'Vid='
-                        'FolderType=Generic') -join "`r`n"
-                    
-                    $null = New-Item -Path "$tmp" -ItemType File -Force
-                    [System.IO.File]::WriteAllText($tmp, $ini, [System.Text.Encoding]::Unicode)
-                    
-                    (Get-Item -LiteralPath $tmp).Attributes = 'Archive, System, Hidden'
-                    
-                    $shell = New-Object -ComObject Shell.Application
-                    $namespace = $shell.NameSpace($full_path_folder)
-                    $namespace.MoveHere($tmp, 0x0004 + 0x0010 + 0x0400)
-                    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($namespace) | Out-Null
-                    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($shell) | Out-Null
-                    $namespace = $null
-                    $shell = $null
-                    #### Creating desktop.ini file ends
-                    
-                    Remove-Item -Path "$tmpDir" -Force
                     if ($VerbosePreference -ne 'SilentlyContinue'){ Write-Host " " }
                     Write-Host "$($Files.Name) " -NoNewline -ForegroundColor DarkGray
                     Write-Host "--> " -NoNewline
